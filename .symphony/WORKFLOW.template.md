@@ -39,6 +39,14 @@ codex:
   thread_sandbox: workspace-write
   turn_sandbox_policy:
     type: workspaceWrite
+    writableRoots:
+      - "__SET_SYMPHONY_WORKSPACE_ROOT__"
+      - "__SET_CHAT_ARCHIVE_ROOT__"
+    readOnlyAccess:
+      type: fullAccess
+    networkAccess: false
+    excludeTmpdirEnvVar: false
+    excludeSlashTmp: false
 ---
 
 You are working on a Linear issue `{{ issue.identifier }}` in the `chat-collector` repository.
