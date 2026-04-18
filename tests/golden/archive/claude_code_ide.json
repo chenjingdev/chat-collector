@@ -1,0 +1,178 @@
+{
+  "case": "claude_code_ide",
+  "descriptor": {
+    "display_name": "Claude Code IDE Bridge",
+    "execution_context": "ide_bridge",
+    "support_level": "complete",
+    "support_metadata": {
+      "expected_transcript_completeness": "complete",
+      "host_surface": "IDE bridge",
+      "limitation_summary": "IDE bridge metadata stays provenance-only; the shared Claude session JSONL remains canonical.",
+      "product_label": "Claude Code"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Claude Code IDE Bridge"
+  },
+  "fixture_subpath": "claude_code_ide",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 2,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 6,
+    "output_path": "<ARCHIVE_ROOT>/claude_code_ide/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 3,
+    "skipped_conversation_count": 0,
+    "source": "claude_code_ide",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 2
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_bridge",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "user-ide-1",
+          "text": "Open the collector project in Cursor.",
+          "timestamp": "2026-03-14T09:00:02Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "asst-ide-1",
+          "text": "I will reuse the shared Claude session transcript and keep IDE residue out of messages.",
+          "timestamp": "2026-03-14T09:00:04Z"
+        },
+        {
+          "role": "user",
+          "source_message_id": "user-ide-2",
+          "text": "Track IDE bridge evidence in provenance only.",
+          "timestamp": "2026-03-14T09:00:05Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "asst-ide-2",
+          "text": "The shared Claude session JSONL will stay canonical.",
+          "timestamp": "2026-03-14T09:00:07Z"
+        }
+      ],
+      "provenance": {
+        "cwd": "<REPO_ROOT>",
+        "ide_bridge": {
+          "config_paths": [
+            "<FIXTURE_ROOT>/.claude.json"
+          ],
+          "history_paths": [
+            "<FIXTURE_ROOT>/history.jsonl"
+          ],
+          "hosts": [
+            "cursor"
+          ],
+          "keybinding_paths": [
+            "<FIXTURE_ROOT>/keybindings.json"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/debug/cb94967c-1902-448e-a976-a393cf66c4d1.txt"
+          ],
+          "recent_file_paths": [
+            "/Users/chenjing/.claude/keybindings.json",
+            "/var/folders/cg/cr4bjzw168l7bh4b87yskltc0000gn/T/claude-prompt-73430a3b-12ec-4f63-8d51-7a8ea2e2c57e.md"
+          ]
+        },
+        "originator": "claude_code_cli",
+        "session_started_at": "2026-03-14T09:00:00Z",
+        "source": "cli"
+      },
+      "source": "claude_code_ide",
+      "source_artifact_path": "<FIXTURE_ROOT>/projects/-Users-chenjing-dev-chat-collector/33333333-3333-4333-8333-333333333333.jsonl",
+      "source_session_id": "33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_bridge",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "sub-user-1",
+          "text": "Double-check the provenance filter.",
+          "timestamp": "2026-03-14T09:01:01Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "sub-asst-1",
+          "text": "The IDE bridge evidence will stay in provenance.",
+          "timestamp": "2026-03-14T09:01:02Z"
+        }
+      ],
+      "provenance": {
+        "cwd": "<REPO_ROOT>",
+        "ide_bridge": {
+          "config_paths": [
+            "<FIXTURE_ROOT>/.claude.json"
+          ],
+          "history_paths": [
+            "<FIXTURE_ROOT>/history.jsonl"
+          ],
+          "hosts": [
+            "cursor"
+          ],
+          "keybinding_paths": [
+            "<FIXTURE_ROOT>/keybindings.json"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/debug/cb94967c-1902-448e-a976-a393cf66c4d1.txt"
+          ],
+          "recent_file_paths": [
+            "/Users/chenjing/.claude/keybindings.json",
+            "/var/folders/cg/cr4bjzw168l7bh4b87yskltc0000gn/T/claude-prompt-73430a3b-12ec-4f63-8d51-7a8ea2e2c57e.md"
+          ]
+        },
+        "originator": "agent-reviewer",
+        "session_started_at": "2026-03-14T09:01:00Z",
+        "source": "cli"
+      },
+      "source": "claude_code_ide",
+      "source_artifact_path": "<FIXTURE_ROOT>/projects/-Users-chenjing-dev-chat-collector/33333333-3333-4333-8333-333333333333/subagents/reviewer.jsonl",
+      "source_session_id": "33333333-3333-4333-8333-333333333333/subagents/reviewer"
+    }
+  ],
+  "source": "claude_code_ide"
+}

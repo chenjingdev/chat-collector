@@ -1,6 +1,6 @@
 # Antigravity Editor View Local Artifacts
 
-Updated: `2026-03-14`
+Updated: `2026-03-20`
 
 Scope: local artifact reconnaissance for `Antigravity` in `ide_native` execution context on macOS. This note stops at storage-path and format identification. It does not implement a collector or parser.
 
@@ -12,6 +12,7 @@ Scope: local artifact reconnaissance for `Antigravity` in `ide_native` execution
   - `~/Library/Application Support/Antigravity`
   - `~/.gemini/antigravity`
 - Strongest transcript candidate: `~/.gemini/antigravity/conversations/<uuid>.pb`
+- Current operator-machine finding: all `42` sampled conversation blobs degraded to explicit `variant_unknown` plus `decode_failed` diagnostics under the confirmed raw protobuf parser
 - Companion session-family artifacts:
   - `~/.gemini/antigravity/brain/<uuid>/...`
   - `~/.gemini/antigravity/annotations/<uuid>.pbtxt`
@@ -19,6 +20,7 @@ Scope: local artifact reconnaissance for `Antigravity` in `ide_native` execution
 - Shared-storage evidence exists: Editor View and Manager-related state co-reside in `~/Library/Application Support/Antigravity/User/globalStorage/state.vscdb` under `antigravityUnifiedStateSync.*`
 - Negative result: `chat.ChatSessionStore.index` was empty across inspected `User/workspaceStorage/*/state.vscdb` databases, including the workspace for `/Users/chenjing/dev/chat-collector`
 - Message-level fields such as `role`, `timestamp`, and `content` were not directly confirmed because the most likely conversation store is an opaque binary `*.pb` format
+- The March 20 sample of real operator blobs did not expose any stable protobuf field framing at offset `0..64`; first-tag wire types clustered at unsupported values `3`, `4`, `6`, and `7`
 
 ## Provenance And Install Layout
 
@@ -200,11 +202,14 @@ This is the strongest candidate for real session transcript storage. However:
 
 - the files were binary and not directly readable as JSON, SQLite, or plain-text protobuf with trivial decoding
 - ad hoc `strings`, `xxd`, and lightweight protobuf-wire inspection did not recover stable message fields
+- all `42` sampled operator-machine blobs failed the confirmed raw protobuf parser before any stable top-level field shape was recovered
+- decode failures clustered around unsupported first-tag wire types `7` (`12` blobs), `4` (`11` blobs), `6` (`9` blobs), and `3` (`8` blobs), with one oversize-varint case and one truncated-length case
+- scanning candidate offsets `0..64` did not recover a second obvious protobuf wrapper with low-numbered field tags, which suggests opaque framing or encryption rather than a trivial fixed header shift
 
 Working conclusion:
 
 - `conversations/<uuid>.pb` is the most likely source for message-level transcript extraction
-- this ticket does not yet establish the exact field mapping for `role`, `timestamp`, and `content`
+- the previously confirmed raw protobuf mapping remains valid for synthetic and fixture-backed variants, but the current operator-machine corpus should be treated as `variant_unknown` with explicit `decode_failed` diagnostics until a new framing or key path is confirmed
 
 ### brain
 

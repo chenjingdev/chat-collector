@@ -9,11 +9,16 @@ description = "Source-by-source local chat collectors normalized for memory-orie
 requires-python = ">=3.11"
 dependencies = []
 
+[project.urls]
+Repository = "https://github.com/chenjingdev/chat-collector"
+Changelog = "https://github.com/chenjingdev/chat-collector/blob/main/CHANGELOG.md"
+
 [project.scripts]
 llm-chat-archive = "llm_chat_archive.cli:main"
 
 [dependency-groups]
 dev = [
+  "hatchling>=1.27",
   "pytest>=8.4.0",
 ]
 
@@ -26,3 +31,14 @@ testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_chat_archive"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/CHANGELOG.md",
+  "/docs/releasing.md",
+  "/pyproject.toml",
+  "/scripts/release_preflight.sh",
+  "/scripts/render_release_notes.py",
+  "/src/llm_chat_archive",
+  "/tests",
+]

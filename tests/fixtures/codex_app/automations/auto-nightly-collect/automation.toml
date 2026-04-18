@@ -1,0 +1,6 @@
+name = "Nightly Collector Sweep"
+prompt = "Run the nightly collector sweep and summarize material changes."
+status = "ACTIVE"
+rrule = "RRULE:FREQ=DAILY;BYHOUR=7;BYMINUTE=15"
+model = "gpt-5.4"
+reasoning_effort = "medium"

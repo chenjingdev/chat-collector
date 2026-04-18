@@ -1,0 +1,171 @@
+{
+  "case": "codex_ide_extension",
+  "descriptor": {
+    "display_name": "Codex IDE Extension",
+    "execution_context": "ide_extension",
+    "support_level": "complete",
+    "support_metadata": {
+      "expected_transcript_completeness": "complete",
+      "host_surface": "IDE extension",
+      "limitation_summary": "IDE bridge residue stays provenance-only; shared rollout JSONL remains canonical.",
+      "product_label": "Codex"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Codex IDE Extension",
+    "version_markers": [
+      "0.31.1",
+      "0.32.0"
+    ]
+  },
+  "fixture_subpath": "codex_ide_extension",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 2,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 5,
+    "output_path": "<ARCHIVE_ROOT>/codex_ide_extension/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 3,
+    "skipped_conversation_count": 0,
+    "source": "codex_ide_extension",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 2
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_extension",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "arch-user",
+          "text": "Summarize the IDE bridge behavior."
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "arch-assistant",
+          "text": "The bridge files stay in provenance.\n\nOnly transcript messages stay in the archive."
+        }
+      ],
+      "provenance": {
+        "archived": true,
+        "cli_version": "0.31.1",
+        "cwd": "/Users/chenjing/dev/archived-repo",
+        "ide_bridge": {
+          "bridge_payload_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/com.openai.chat/app_pairing_extensions/Cursor-bridge-456",
+            "<FIXTURE_ROOT>/Library/Application Support/com.openai.chat/app_pairing_extensions/Visual Studio Code-bridge-123"
+          ],
+          "hosts": [
+            "cursor",
+            "vscode"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Code/logs/20260314T103500/window1/exthost/openai.chatgpt/Codex.log",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T104000/window2/exthost/openai.chatgpt/Codex.log"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-a/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-b/state.vscdb"
+          ]
+        },
+        "originator": "codex_vscode",
+        "session_started_at": "2026-03-08T14:05:00Z",
+        "source": "vscode"
+      },
+      "source": "codex_ide_extension",
+      "source_artifact_path": "<FIXTURE_ROOT>/archived_sessions/rollout-20260308T140500-ide-archived.jsonl",
+      "source_session_id": "ide-archived"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_extension",
+      "messages": [
+        {
+          "role": "developer",
+          "source_message_id": "ide-dev",
+          "text": "Prefer the shared rollout transcript."
+        },
+        {
+          "role": "user",
+          "source_message_id": "ide-user",
+          "text": "Add the IDE extension collector."
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "ide-assistant",
+          "text": "I will filter on codex_vscode and keep bridge files as provenance only."
+        }
+      ],
+      "provenance": {
+        "archived": false,
+        "cli_version": "0.32.0",
+        "cwd": "<REPO_ROOT>",
+        "ide_bridge": {
+          "bridge_payload_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/com.openai.chat/app_pairing_extensions/Cursor-bridge-456",
+            "<FIXTURE_ROOT>/Library/Application Support/com.openai.chat/app_pairing_extensions/Visual Studio Code-bridge-123"
+          ],
+          "hosts": [
+            "cursor",
+            "vscode"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Code/logs/20260314T103500/window1/exthost/openai.chatgpt/Codex.log",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T104000/window2/exthost/openai.chatgpt/Codex.log"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-a/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-b/state.vscdb"
+          ]
+        },
+        "originator": "codex_vscode",
+        "session_started_at": "2026-03-14T10:30:00Z",
+        "source": "vscode"
+      },
+      "source": "codex_ide_extension",
+      "source_artifact_path": "<FIXTURE_ROOT>/sessions/2026/03/14/rollout-20260314T103000-ide-active.jsonl",
+      "source_session_id": "ide-active"
+    }
+  ],
+  "source": "codex_ide_extension"
+}

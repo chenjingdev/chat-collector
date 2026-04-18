@@ -1,0 +1,364 @@
+{
+  "case": "codex_app",
+  "descriptor": {
+    "display_name": "Codex Desktop App",
+    "execution_context": "standalone_app",
+    "support_level": "complete",
+    "support_metadata": {
+      "expected_transcript_completeness": "complete",
+      "host_surface": "Desktop app",
+      "limitation_summary": "Desktop automation run state comes from shared SQLite metadata, and archived automation rollout gaps stay rollout-first while repaired bodies are tagged with explicit fallback provenance.",
+      "limitations": [
+        "Automation-origin attribution depends on local sqlite/codex-dev.db automation_runs rows being present, with state_5.sqlite thread metadata used as a secondary join signal.",
+        "Archived automation conversations keep rollout bodies canonical and tag any repaired user or assistant body with message-level provenance from archived snapshot or thread metadata."
+      ],
+      "product_label": "Codex"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Codex Desktop",
+    "version_markers": [
+      "0.31.0",
+      "0.32.0"
+    ]
+  },
+  "fixture_subpath": "codex_app",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 4,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 9,
+    "output_path": "<ARCHIVE_ROOT>/codex_app/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 5,
+    "skipped_conversation_count": 0,
+    "source": "codex_app",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 4
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "standalone_app",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "arch-user",
+          "text": "Summarize the Desktop app collector changes."
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "arch-assistant",
+          "text": "The collector now filters Desktop sessions and ignores shell-support noise."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Codex"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/automations/auto-nightly-collect/automation.toml",
+            "<FIXTURE_ROOT>/sqlite/codex-dev.db"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/Library/Caches/com.openai.codex"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Logs/com.openai.codex"
+          ],
+          "preference_paths": [
+            "<FIXTURE_ROOT>/Library/Preferences/com.openai.codex.plist"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/state_5.sqlite"
+          ]
+        },
+        "archived": true,
+        "cli_version": "0.31.0",
+        "conversation_origin": "interactive",
+        "cwd": "<REPO_ROOT>",
+        "originator": "Codex Desktop",
+        "session_started_at": "2026-03-02T08:30:00Z",
+        "source": "exec"
+      },
+      "source": "codex_app",
+      "source_artifact_path": "<FIXTURE_ROOT>/archived_sessions/rollout-20260302T083000-desktop-archived.jsonl",
+      "source_session_id": "desktop-archived"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "standalone_app",
+      "limitations": [
+        "automation_origin_user_message_reconstructed_from_archived_snapshot",
+        "automation_origin_assistant_message_reconstructed_from_archived_snapshot"
+      ],
+      "messages": [
+        {
+          "provenance": {
+            "body_source": "automation_runs.archived_user_message",
+            "fallback": true
+          },
+          "role": "user",
+          "source_message_id": "automation-archived-user",
+          "text": "Collect the archived automation threads too.",
+          "timestamp": "2026-03-05T07:15:00Z"
+        },
+        {
+          "provenance": {
+            "body_source": "automation_runs.archived_assistant_message",
+            "fallback": true
+          },
+          "role": "assistant",
+          "source_message_id": "automation-archived-assistant",
+          "text": "The archived automation run is reconstructed from the inbox snapshot."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Codex"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/automations/auto-nightly-collect/automation.toml",
+            "<FIXTURE_ROOT>/sqlite/codex-dev.db"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/Library/Caches/com.openai.codex"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Logs/com.openai.codex"
+          ],
+          "preference_paths": [
+            "<FIXTURE_ROOT>/Library/Preferences/com.openai.codex.plist"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/state_5.sqlite"
+          ]
+        },
+        "archived": true,
+        "archived_reason": "accepted_after_review",
+        "automation": {
+          "automation_id": "auto-nightly-collect",
+          "automation_name": "Nightly Collector Sweep",
+          "definition_path": "<FIXTURE_ROOT>/automations/auto-nightly-collect/automation.toml",
+          "inbox_summary": "Archived automation inbox summary",
+          "inbox_title": "Nightly collector archive",
+          "model": "gpt-5.4",
+          "reasoning_effort": "medium",
+          "resolved_summary": "Archived automation inbox summary",
+          "resolved_summary_source": "automation_runs.inbox_summary",
+          "resolved_title": "Nightly collector archive",
+          "resolved_title_source": "automation_runs.thread_title",
+          "schedule": "RRULE:FREQ=DAILY;BYHOUR=7;BYMINUTE=15",
+          "source_cwd": "<REPO_ROOT>",
+          "status": "ARCHIVED",
+          "thread_record_title": "Nightly collector archive",
+          "thread_title": "Nightly collector archive"
+        },
+        "cli_version": "0.31.0",
+        "conversation_origin": "automation",
+        "cwd": "<REPO_ROOT>",
+        "originator": "Codex Desktop",
+        "session_started_at": "2026-03-05T07:15:00Z",
+        "source": "exec"
+      },
+      "source": "codex_app",
+      "source_artifact_path": "<FIXTURE_ROOT>/archived_sessions/rollout-20260305T071500-desktop-automation-archived.jsonl",
+      "source_session_id": "desktop-automation-archived",
+      "transcript_completeness": "partial"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "standalone_app",
+      "messages": [
+        {
+          "role": "developer",
+          "source_message_id": "app-dev",
+          "text": "Prefer the shared rollout transcript."
+        },
+        {
+          "role": "user",
+          "source_message_id": "app-user",
+          "text": "Collect the Desktop app sessions only."
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "app-assistant",
+          "text": "I will filter on Codex Desktop and keep shell artifacts as provenance only."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Codex"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/automations/auto-nightly-collect/automation.toml",
+            "<FIXTURE_ROOT>/sqlite/codex-dev.db"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/Library/Caches/com.openai.codex"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Logs/com.openai.codex"
+          ],
+          "preference_paths": [
+            "<FIXTURE_ROOT>/Library/Preferences/com.openai.codex.plist"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/state_5.sqlite"
+          ]
+        },
+        "archived": false,
+        "cli_version": "0.32.0",
+        "conversation_origin": "interactive",
+        "cwd": "<REPO_ROOT>",
+        "originator": "Codex Desktop",
+        "session_started_at": "2026-03-14T11:00:00Z",
+        "source": "exec"
+      },
+      "source": "codex_app",
+      "source_artifact_path": "<FIXTURE_ROOT>/sessions/2026/03/14/rollout-20260314T110000-desktop-active.jsonl",
+      "source_session_id": "desktop-active"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "standalone_app",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "automation-active-user",
+          "text": "Run the nightly collector sweep."
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "automation-active-assistant",
+          "text": "The nightly collector sweep completed and archived the normalized rows."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Codex"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/automations/auto-nightly-collect/automation.toml",
+            "<FIXTURE_ROOT>/sqlite/codex-dev.db"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/Library/Caches/com.openai.codex"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Logs/com.openai.codex"
+          ],
+          "preference_paths": [
+            "<FIXTURE_ROOT>/Library/Preferences/com.openai.codex.plist"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/state_5.sqlite"
+          ]
+        },
+        "archived": false,
+        "automation": {
+          "automation_id": "auto-nightly-collect",
+          "automation_name": "Nightly Collector Sweep",
+          "definition_path": "<FIXTURE_ROOT>/automations/auto-nightly-collect/automation.toml",
+          "inbox_summary": "Active automation inbox summary",
+          "inbox_title": "Nightly collector sweep",
+          "model": "gpt-5.4",
+          "reasoning_effort": "medium",
+          "resolved_summary": "Active automation inbox summary",
+          "resolved_summary_source": "automation_runs.inbox_summary",
+          "resolved_title": "Nightly collector sweep",
+          "resolved_title_source": "automation_runs.thread_title",
+          "schedule": "RRULE:FREQ=DAILY;BYHOUR=7;BYMINUTE=15",
+          "source_cwd": "<REPO_ROOT>",
+          "status": "ACCEPTED",
+          "thread_record_title": "Nightly collector sweep",
+          "thread_title": "Nightly collector sweep"
+        },
+        "cli_version": "0.32.0",
+        "conversation_origin": "automation",
+        "cwd": "<REPO_ROOT>",
+        "originator": "Codex Desktop",
+        "session_started_at": "2026-03-15T09:00:00Z",
+        "source": "exec"
+      },
+      "source": "codex_app",
+      "source_artifact_path": "<FIXTURE_ROOT>/sessions/2026/03/15/rollout-20260315T090000-desktop-automation-active.jsonl",
+      "source_session_id": "desktop-automation-active"
+    }
+  ],
+  "source": "codex_app"
+}

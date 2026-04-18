@@ -1,6 +1,6 @@
 # Codex App Local Transcript And Worktree Artifacts
 
-Updated: `2026-03-14`
+Updated: `2026-03-20`
 
 Scope: local artifact reconnaissance for `Codex` in `standalone_app` execution context on macOS. This note stops at storage-path and format identification. It does not implement a collector or parser.
 
@@ -220,6 +220,9 @@ Observed `event_msg.payload.type` categories:
 - `reasoning` rows should also be excluded from collector output.
 - `turn_context` rows are useful provenance and environment metadata, especially for `cwd`, approvals, sandboxing, and model attribution, but they are not message content.
 - App log files under `~/Library/Logs/com.openai.codex/` expose internal RPC methods and diagnostic failures, which should not be misclassified as conversation transcript.
+- Collector implementation should join `~/.codex/state_5.sqlite threads` with `~/.codex/sqlite/codex-dev.db automation_runs` to separate interactive Desktop threads from automation-origin conversations.
+- `~/.codex/automations/*/automation.toml` and `automations` table fields are useful provenance for automation name, schedule, model, and reasoning effort, but they should not replace canonical transcript text.
+- Archived automation runs should treat rollout JSONL as canonical first and use `archived_user_message` or `archived_assistant_message` only when the rollout no longer contains the corresponding user or assistant body.
 
 ## Shared vs Independent Storage
 

@@ -1,0 +1,16 @@
+{
+  "archive_root": "/portable/demo/archive-root",
+  "conversation_count": 3,
+  "conversations_path": "/portable/demo/archive-bundle/conversations.jsonl",
+  "filters": {
+    "session": null,
+    "source": null,
+    "text": null,
+    "transcript_completeness": null
+  },
+  "manifest_path": "/portable/demo/archive-bundle/export-manifest.json",
+  "message_count": 6,
+  "output_dir": "/portable/demo/archive-bundle",
+  "source_count": 3,
+  "write_mode": "write"
+}

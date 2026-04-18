@@ -1,0 +1,432 @@
+{
+  "case": "cursor",
+  "descriptor": {
+    "display_name": "Cursor CLI",
+    "execution_context": "cli",
+    "support_level": "partial",
+    "support_metadata": {
+      "expected_transcript_completeness": "partial",
+      "host_surface": "CLI",
+      "limitation_summary": "Cursor CLI still depends on shared editor transcript rows plus unique invocation attribution, so it remains partial and opt-in for unattended batches.",
+      "limitations": [
+        "CLI invocations are promoted only when shared cursorDiskKV transcript rows can be uniquely attributed to a specific invocation.",
+        "cli.log and workspace prompt caches alone remain partial or unsupported evidence."
+      ],
+      "product_label": "Cursor"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Cursor CLI",
+    "version_markers": [
+      "0.48.2"
+    ]
+  },
+  "fixture_subpath": "cursor_cli",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 3,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 4,
+    "output_path": "<ARCHIVE_ROOT>/cursor/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 3,
+    "skipped_conversation_count": 0,
+    "source": "cursor",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 3
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "messages": [
+        {
+          "role": "user",
+          "text": "Probe the Cursor CLI artifact layout."
+        },
+        {
+          "role": "assistant",
+          "text": "Use shared cursorDiskKV rows only after prompt overlap confirms the CLI invocation.",
+          "timestamp": "2026-03-14T12:00:20Z"
+        },
+        {
+          "role": "user",
+          "text": "Keep cli.log and bridge state out of transcript messages."
+        },
+        {
+          "role": "assistant",
+          "text": "Only the attributed user and assistant turns belong in the normalized transcript.",
+          "timestamp": "2026-03-14T12:00:50Z"
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.cursor/mcp.json",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/INSTRUCTIONS.md",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/SERVER_METADATA.json",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/INSTRUCTIONS.md",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/SERVER_METADATA.json"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/.cursor"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T120000/cli.log"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs"
+          ],
+          "preference_paths": [
+            "<FIXTURE_ROOT>/.cursor/cli-config.json",
+            "<FIXTURE_ROOT>/.cursor/ide_state.json"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-alpha/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-beta/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-gamma/state.vscdb"
+          ]
+        },
+        "cwd": "<REPO_ROOT>",
+        "originator": "cursor_cli",
+        "session_started_at": "2026-03-14T12:00:00Z",
+        "source": "cli"
+      },
+      "session_metadata": {
+        "bridge_servers": [
+          {
+            "server_identifier": "cursor-browser-extension",
+            "server_name": "Cursor Browser Extension",
+            "source_path": "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/SERVER_METADATA.json"
+          },
+          {
+            "server_identifier": "cursor-ide-browser",
+            "server_name": "Cursor IDE Browser",
+            "source_path": "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/SERVER_METADATA.json"
+          }
+        ],
+        "cli_config": {
+          "editor": "cursor",
+          "has_changed_default_model": false,
+          "network": {
+            "enabled": true
+          },
+          "permissions": {
+            "mode": "workspace-write"
+          },
+          "version": "0.48.2"
+        },
+        "global_state_count": 1,
+        "has_mcp_config": true,
+        "invocation": {
+          "headless": false,
+          "invocation_id": "20260314T120000",
+          "invoked_at": "2026-03-14T12:00:00Z",
+          "list_extensions": false,
+          "log_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T120000/cli.log",
+          "logs_path": "/Users/chenjing/Library/Application Support/Cursor/logs/20260314T120000",
+          "show_versions": false,
+          "status": false,
+          "trace": false,
+          "verbose": true
+        },
+        "recently_viewed_files": [
+          "<REPO_ROOT>/docs/research/cursor-cli-local-artifacts.md",
+          "<REPO_ROOT>/src/llm_chat_archive/sources/cursor_cli.py"
+        ],
+        "transcript_attribution": {
+          "activity_at": "2026-03-14T12:00:50Z",
+          "assistant_message_count": 2,
+          "composer_id": "composer-cli-alpha",
+          "composer_name": "Cursor CLI transcript match",
+          "composer_subtitle": "Prompt overlap confirmed",
+          "created_at": "2026-03-14T11:59:55Z",
+          "generation_count": 2,
+          "last_focused": true,
+          "last_updated_at": "2026-03-14T12:00:50Z",
+          "match_strategy": "prompt_overlap_plus_time_window",
+          "partial_prompt_texts": [
+            "Probe the Cursor CLI artifact layout.",
+            "Keep cli.log and bridge state out of transcript messages."
+          ],
+          "prompt_count": 2,
+          "prompt_overlap_count": 2,
+          "selected": true,
+          "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-alpha/state.vscdb",
+          "transcript_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+          "transcript_header_count": 4,
+          "transcript_source": "cursor_disk_kv",
+          "workspace_folder": "<REPO_ROOT>",
+          "workspace_id": "workspace-alpha"
+        },
+        "workspace_state_count": 3
+      },
+      "source": "cursor",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T120000/cli.log",
+      "source_session_id": "20260314T120000"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "limitations": [
+        "cursor_cli_transcript_not_confirmed",
+        "workspace_prompt_cache_only"
+      ],
+      "messages": [],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.cursor/mcp.json",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/INSTRUCTIONS.md",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/SERVER_METADATA.json",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/INSTRUCTIONS.md",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/SERVER_METADATA.json"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/.cursor"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T121500/cli.log"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs"
+          ],
+          "preference_paths": [
+            "<FIXTURE_ROOT>/.cursor/cli-config.json",
+            "<FIXTURE_ROOT>/.cursor/ide_state.json"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-alpha/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-beta/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-gamma/state.vscdb"
+          ]
+        },
+        "originator": "cursor_cli",
+        "session_started_at": "2026-03-14T12:15:00Z",
+        "source": "cli"
+      },
+      "session_metadata": {
+        "bridge_servers": [
+          {
+            "server_identifier": "cursor-browser-extension",
+            "server_name": "Cursor Browser Extension",
+            "source_path": "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/SERVER_METADATA.json"
+          },
+          {
+            "server_identifier": "cursor-ide-browser",
+            "server_name": "Cursor IDE Browser",
+            "source_path": "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/SERVER_METADATA.json"
+          }
+        ],
+        "cli_config": {
+          "editor": "cursor",
+          "has_changed_default_model": false,
+          "network": {
+            "enabled": true
+          },
+          "permissions": {
+            "mode": "workspace-write"
+          },
+          "version": "0.48.2"
+        },
+        "global_state_count": 1,
+        "has_mcp_config": true,
+        "invocation": {
+          "headless": false,
+          "invocation_id": "20260314T121500",
+          "invoked_at": "2026-03-14T12:15:00Z",
+          "list_extensions": false,
+          "log_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T121500/cli.log",
+          "logs_path": "/Users/chenjing/Library/Application Support/Cursor/logs/20260314T121500",
+          "show_versions": false,
+          "status": false,
+          "trace": false,
+          "verbose": false
+        },
+        "recently_viewed_files": [
+          "<REPO_ROOT>/docs/research/cursor-cli-local-artifacts.md",
+          "<REPO_ROOT>/src/llm_chat_archive/sources/cursor_cli.py"
+        ],
+        "workspace_prompt_evidence": {
+          "activity_at": "2026-03-14T12:15:20Z",
+          "composer_id": "composer-cli-gamma",
+          "composer_name": "Cursor CLI degraded fallback",
+          "composer_subtitle": "Prompt evidence only",
+          "created_at": "2026-03-14T12:15:00Z",
+          "generation_count": 1,
+          "last_focused": true,
+          "last_updated_at": "2026-03-14T12:15:20Z",
+          "match_strategy": "time_proximity_metadata_only",
+          "partial_prompt_texts": [
+            "Keep this invocation partial when transcript rows are absent."
+          ],
+          "prompt_count": 1,
+          "selected": true,
+          "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-gamma/state.vscdb",
+          "workspace_folder": "/Users/chenjing/dev/chat-history",
+          "workspace_id": "workspace-gamma"
+        },
+        "workspace_state_count": 3
+      },
+      "source": "cursor",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T121500/cli.log",
+      "source_session_id": "20260314T121500",
+      "transcript_completeness": "partial"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "limitations": [
+        "cursor_cli_transcript_not_confirmed",
+        "metadata_only_cli_invocation"
+      ],
+      "messages": [],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.cursor/mcp.json",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/INSTRUCTIONS.md",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/SERVER_METADATA.json",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/INSTRUCTIONS.md",
+            "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/SERVER_METADATA.json"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/.cursor"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T160000/cli.log"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs"
+          ],
+          "preference_paths": [
+            "<FIXTURE_ROOT>/.cursor/cli-config.json",
+            "<FIXTURE_ROOT>/.cursor/ide_state.json"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-alpha/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-beta/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-gamma/state.vscdb"
+          ]
+        },
+        "originator": "cursor_cli",
+        "session_started_at": "2026-03-14T16:00:00Z",
+        "source": "cli"
+      },
+      "session_metadata": {
+        "bridge_servers": [
+          {
+            "server_identifier": "cursor-browser-extension",
+            "server_name": "Cursor Browser Extension",
+            "source_path": "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-browser-extension/SERVER_METADATA.json"
+          },
+          {
+            "server_identifier": "cursor-ide-browser",
+            "server_name": "Cursor IDE Browser",
+            "source_path": "<FIXTURE_ROOT>/.cursor/projects/temp-probe/mcps/cursor-ide-browser/SERVER_METADATA.json"
+          }
+        ],
+        "cli_config": {
+          "editor": "cursor",
+          "has_changed_default_model": false,
+          "network": {
+            "enabled": true
+          },
+          "permissions": {
+            "mode": "workspace-write"
+          },
+          "version": "0.48.2"
+        },
+        "global_state_count": 1,
+        "has_mcp_config": true,
+        "invocation": {
+          "headless": false,
+          "invocation_id": "20260314T160000",
+          "invoked_at": "2026-03-14T16:00:00Z",
+          "list_extensions": false,
+          "log_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T160000/cli.log",
+          "logs_path": "/Users/chenjing/Library/Application Support/Cursor/logs/20260314T160000",
+          "show_versions": false,
+          "status": true,
+          "trace": false,
+          "verbose": false
+        },
+        "recently_viewed_files": [
+          "<REPO_ROOT>/docs/research/cursor-cli-local-artifacts.md",
+          "<REPO_ROOT>/src/llm_chat_archive/sources/cursor_cli.py"
+        ],
+        "workspace_state_count": 3
+      },
+      "source": "cursor",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T160000/cli.log",
+      "source_session_id": "20260314T160000",
+      "transcript_completeness": "unsupported"
+    }
+  ],
+  "source": "cursor"
+}

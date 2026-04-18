@@ -1,0 +1,428 @@
+{
+  "case": "windsurf_editor",
+  "descriptor": {
+    "display_name": "Windsurf Editor",
+    "execution_context": "ide_native",
+    "support_level": "partial",
+    "support_metadata": {
+      "expected_transcript_completeness": "partial",
+      "host_surface": "Editor",
+      "limitation_summary": "Windsurf local memories and rules can be normalized, but no confirmed native editor session-history store is available yet, so the collector remains partial and opt-in.",
+      "limitations": [
+        "Memories and rules are captured as partial context rows because they are not original turn-by-turn Cascade transcripts.",
+        "mcp_config.json, skills directories, and bare workspace metadata degrade to unsupported rows until a confirmed session-history store is observed."
+      ],
+      "product_label": "Windsurf"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Windsurf",
+    "build_markers": [
+      "mcp_server_count=1",
+      "workspace_rule_trigger=glob"
+    ]
+  },
+  "fixture_subpath": "windsurf_editor",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 6,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 5,
+    "output_path": "<ARCHIVE_ROOT>/windsurf_editor/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 6,
+    "skipped_conversation_count": 0,
+    "source": "windsurf_editor",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 6
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "rule_file_not_original_conversation_transcript",
+        "no_confirmed_windsurf_editor_session_history"
+      ],
+      "messages": [
+        {
+          "role": "developer",
+          "text": "# Global Windsurf Rules\n\n- Use `uv run` for Python commands.\n- Keep real archive output outside the repository checkout."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.codeium/windsurf",
+            "<FIXTURE_ROOT>/.codeium/windsurf/mcp_config.json",
+            "<FIXTURE_ROOT>/.codeium/windsurf/memories/global_rules.md",
+            "<FIXTURE_ROOT>/.codeium/windsurf/skills",
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf/rules/security.md",
+            "<FIXTURE_ROOT>/repo-alpha/.windsurf/skills",
+            "<FIXTURE_ROOT>/repo-beta/.windsurf/skills"
+          ]
+        },
+        "originator": "windsurf_editor",
+        "source": "windsurf"
+      },
+      "session_metadata": {
+        "activation_mode": "always_on",
+        "global_skill_file_count": 1,
+        "mcp_server_count": 1,
+        "mcp_server_names": [
+          "filesystem"
+        ],
+        "relative_path": "memories/global_rules.md",
+        "rule_name": "global_rules",
+        "rule_scope": "global",
+        "scope": "rule"
+      },
+      "source": "windsurf_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/.codeium/windsurf/memories/global_rules.md",
+      "source_session_id": "global:rule:global_rules",
+      "transcript_completeness": "partial"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "memory_entry_not_original_conversation_transcript",
+        "no_confirmed_windsurf_editor_session_history"
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "text": "Prefer `uv run` over direct `python`.\n\nCollected archives must stay under `/Users/chenjing/dev/chat-history`."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.codeium/windsurf",
+            "<FIXTURE_ROOT>/.codeium/windsurf/mcp_config.json",
+            "<FIXTURE_ROOT>/.codeium/windsurf/memories/workspace-alpha/build-preferences.md",
+            "<FIXTURE_ROOT>/.codeium/windsurf/skills",
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf/rules/security.md",
+            "<FIXTURE_ROOT>/repo-alpha/.windsurf/skills",
+            "<FIXTURE_ROOT>/repo-beta/.windsurf/skills"
+          ]
+        },
+        "originator": "windsurf_editor",
+        "source": "windsurf"
+      },
+      "session_metadata": {
+        "content_format": "text",
+        "global_skill_file_count": 1,
+        "mcp_server_count": 1,
+        "mcp_server_names": [
+          "filesystem"
+        ],
+        "memory_key": "workspace-alpha/build-preferences",
+        "memory_scope": "workspace",
+        "relative_path": "workspace-alpha/build-preferences.md",
+        "scope": "memory",
+        "workspace_key": "workspace-alpha"
+      },
+      "source": "windsurf_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/.codeium/windsurf/memories/workspace-alpha/build-preferences.md",
+      "source_session_id": "memory:workspace-alpha/build-preferences",
+      "transcript_completeness": "partial"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "rule_file_not_original_conversation_transcript",
+        "no_confirmed_windsurf_editor_session_history"
+      ],
+      "messages": [
+        {
+          "role": "system",
+          "text": "# System Security Rules\n\n- Never write real collected archives inside the repository.\n- Treat secrets as redaction targets before export."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.codeium/windsurf",
+            "<FIXTURE_ROOT>/.codeium/windsurf/mcp_config.json",
+            "<FIXTURE_ROOT>/.codeium/windsurf/skills",
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf/rules/security.md",
+            "<FIXTURE_ROOT>/repo-alpha/.windsurf/skills",
+            "<FIXTURE_ROOT>/repo-beta/.windsurf/skills"
+          ]
+        },
+        "originator": "windsurf_editor",
+        "source": "windsurf"
+      },
+      "session_metadata": {
+        "activation_mode": "always_on",
+        "relative_path": "rules/security.md",
+        "rule_name": "security",
+        "rule_scope": "system",
+        "scope": "rule"
+      },
+      "source": "windsurf_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Windsurf/rules/security.md",
+      "source_session_id": "system:rule:security",
+      "transcript_completeness": "partial"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "rule_file_not_original_conversation_transcript",
+        "no_confirmed_windsurf_editor_session_history"
+      ],
+      "messages": [
+        {
+          "role": "developer",
+          "text": "# Repo Alpha Rules\n\n- Prefer small, focused source collectors.\n- Keep operator-facing limitations explicit."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.codeium/windsurf",
+            "<FIXTURE_ROOT>/.codeium/windsurf/mcp_config.json",
+            "<FIXTURE_ROOT>/.codeium/windsurf/skills",
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf/rules/security.md",
+            "<FIXTURE_ROOT>/repo-alpha/.windsurf/rules/always-on.md",
+            "<FIXTURE_ROOT>/repo-alpha/.windsurf/skills",
+            "<FIXTURE_ROOT>/repo-beta/.windsurf/skills"
+          ]
+        },
+        "cwd": "<FIXTURE_ROOT>/repo-alpha",
+        "originator": "windsurf_editor",
+        "source": "windsurf"
+      },
+      "session_metadata": {
+        "activation_mode": "always_on",
+        "relative_path": ".windsurf/rules/always-on.md",
+        "rule_name": "always-on",
+        "rule_scope": "workspace",
+        "scope": "rule",
+        "workspace_label": "repo-alpha",
+        "workspace_root": "<FIXTURE_ROOT>/repo-alpha",
+        "workspace_skill_dir_count": 1,
+        "workspace_skill_file_count": 1
+      },
+      "source": "windsurf_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/repo-alpha/.windsurf/rules/always-on.md",
+      "source_session_id": "workspace:repo-alpha:rule:always-on",
+      "transcript_completeness": "partial"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "rule_file_not_original_conversation_transcript",
+        "no_confirmed_windsurf_editor_session_history"
+      ],
+      "messages": [
+        {
+          "role": "developer",
+          "text": "Test files should prefer exact archive-shape assertions over loose substring checks."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.codeium/windsurf",
+            "<FIXTURE_ROOT>/.codeium/windsurf/mcp_config.json",
+            "<FIXTURE_ROOT>/.codeium/windsurf/skills",
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf/rules/security.md",
+            "<FIXTURE_ROOT>/repo-alpha/.windsurf/rules/tests.md",
+            "<FIXTURE_ROOT>/repo-alpha/.windsurf/skills",
+            "<FIXTURE_ROOT>/repo-beta/.windsurf/skills"
+          ]
+        },
+        "cwd": "<FIXTURE_ROOT>/repo-alpha",
+        "originator": "windsurf_editor",
+        "source": "windsurf"
+      },
+      "session_metadata": {
+        "activation_mode": "glob",
+        "frontmatter": {
+          "description": "Apply stricter assertions in test files.",
+          "globs": [
+            "tests/**/*.py"
+          ],
+          "trigger": "glob"
+        },
+        "relative_path": ".windsurf/rules/tests.md",
+        "rule_name": "tests",
+        "rule_scope": "workspace",
+        "scope": "rule",
+        "workspace_label": "repo-alpha",
+        "workspace_root": "<FIXTURE_ROOT>/repo-alpha",
+        "workspace_skill_dir_count": 1,
+        "workspace_skill_file_count": 1
+      },
+      "source": "windsurf_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/repo-alpha/.windsurf/rules/tests.md",
+      "source_session_id": "workspace:repo-alpha:rule:tests",
+      "transcript_completeness": "partial"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "workspace_metadata_only",
+        "no_confirmed_windsurf_editor_session_history"
+      ],
+      "messages": [],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.codeium/windsurf",
+            "<FIXTURE_ROOT>/.codeium/windsurf/mcp_config.json",
+            "<FIXTURE_ROOT>/.codeium/windsurf/skills",
+            "<FIXTURE_ROOT>/Library/Application Support/Windsurf/rules/security.md",
+            "<FIXTURE_ROOT>/repo-alpha/.windsurf/skills",
+            "<FIXTURE_ROOT>/repo-beta/.windsurf",
+            "<FIXTURE_ROOT>/repo-beta/.windsurf/skills"
+          ]
+        },
+        "cwd": "<FIXTURE_ROOT>/repo-beta",
+        "originator": "windsurf_editor",
+        "source": "windsurf"
+      },
+      "session_metadata": {
+        "scope": "workspace_metadata",
+        "workspace_label": "repo-beta",
+        "workspace_root": "<FIXTURE_ROOT>/repo-beta",
+        "workspace_rule_count": 0,
+        "workspace_skill_dir_count": 1,
+        "workspace_skill_file_count": 1
+      },
+      "source": "windsurf_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/repo-beta/.windsurf",
+      "source_session_id": "workspace:repo-beta:metadata",
+      "transcript_completeness": "unsupported"
+    }
+  ],
+  "source": "windsurf_editor"
+}

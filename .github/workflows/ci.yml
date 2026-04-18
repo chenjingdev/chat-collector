@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  pytest:
+    name: pytest (ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Run pytest
+        run: uv run pytest
+
+  fixture-smoke:
+    name: fixture smoke (${{ matrix.os }} / ${{ matrix.smoke.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+        smoke:
+          - name: collect-codex-cli
+            pytest_args: tests/test_ci_fixture_smoke.py -k test_codex_cli_fixture_collect_smoke
+          - name: collect-cursor
+            pytest_args: tests/test_ci_fixture_smoke.py -k test_cursor_fixture_collect_smoke
+          - name: collect-gemini-code-assist-ide
+            pytest_args: tests/test_ci_fixture_smoke.py -k test_gemini_code_assist_ide_fixture_collect_smoke
+          - name: archive-commands
+            pytest_args: tests/test_ci_fixture_smoke.py -k test_archive_commands_fixture_smoke
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Run ${{ matrix.smoke.name }}
+        run: uv run pytest ${{ matrix.smoke.pytest_args }} -q

@@ -1,6 +1,7 @@
 {
   "sessionId": "gemini-candidate",
   "responderUsername": "Gemini Code Assist",
+  "createdAt": "2026-03-14T10:00:00Z",
   "selectedModel": {
     "metadata": {
       "extension": {
@@ -10,7 +11,61 @@
   },
   "requests": [
     {
-      "message": "Gemini candidate request text must stay out."
+      "requestId": "request-1",
+      "timestamp": "2026-03-14T10:00:00Z",
+      "message": "Summarize the current Gemini IDE collector.",
+      "response": {
+        "responseId": "response-1",
+        "timestamp": "2026-03-14T10:00:04Z",
+        "message": {
+          "text": "The collector only emitted metadata-only rows before this upgrade."
+        }
+      }
+    },
+    {
+      "requestId": "request-2",
+      "createdAt": "2026-03-14T10:01:00Z",
+      "prompt": {
+        "parts": [
+          {
+            "text": "Keep auth files and install residue out of transcript messages."
+          }
+        ]
+      },
+      "responseParts": [
+        {
+          "text": "Confirmed."
+        },
+        {
+          "text": "Those files remain provenance-only artifacts."
+        }
+      ],
+      "responseTimestamp": "2026-03-14T10:01:06Z"
+    },
+    {
+      "requestId": "request-3",
+      "requestTimestamp": "2026-03-14T10:02:00Z",
+      "query": {
+        "segments": [
+          {
+            "text": "Recover the segmented Gemini body shape too."
+          }
+        ]
+      },
+      "response": {
+        "updatedAt": "2026-03-14T10:02:08Z",
+        "candidates": [
+          {
+            "content": {
+              "segments": [
+                {
+                  "text": "Recovered from the alternate segmented Gemini response body."
+                }
+              ]
+            }
+          }
+        ]
+      }
     }
   ],
   "isEmpty": false

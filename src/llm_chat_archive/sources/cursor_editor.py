@@ -1,26 +1,38 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import unquote, urlparse
 
+from ..incremental import write_incremental_collection
 from ..models import (
     AppShellProvenance,
     CollectionPlan,
     CollectionResult,
     ConversationProvenance,
     MessageRole,
+    MessageProvenance,
     NormalizedConversation,
     NormalizedMessage,
     SourceDescriptor,
+    SourceSupportMetadata,
     SupportLevel,
     TranscriptCompleteness,
 )
-from .codex_rollout import resolve_input_roots, timestamp_slug, utc_timestamp
+from ..source_roots import (
+    all_platform_root,
+    darwin_root,
+    default_descriptor_input_roots,
+    linux_root,
+    windows_root,
+)
+from .codex_rollout import resolve_input_roots, utc_timestamp
 
 CURSOR_EDITOR_DESCRIPTOR = SourceDescriptor(
     key="cursor_editor",
@@ -31,10 +43,27 @@ CURSOR_EDITOR_DESCRIPTOR = SourceDescriptor(
         "~/.cursor",
         "~/Library/Application Support/Cursor",
     ),
+    artifact_root_candidates=(
+        all_platform_root("$HOME/.cursor"),
+        darwin_root("$HOME/Library/Application Support/Cursor"),
+        linux_root("$XDG_CONFIG_HOME/Cursor"),
+        windows_root("$APPDATA/Cursor"),
+    ),
     notes=(
-        "Uses Cursor User/workspaceStorage/<workspace-id>/state.vscdb as the primary session metadata source.",
-        "Builds partial conversations from confirmed aiService.prompts user text and aiService.generations time anchors only.",
-        "Treats cursor.hooks.log, .cursor/ai-tracking, global memory flags, and third-party extension state as provenance or auxiliary metadata only.",
+        "Uses Cursor User/workspaceStorage/<workspace-id>/state.vscdb plus shared cursorDiskKV rows as the transcript-bearing composer path.",
+        "Reconstructs ordered user and assistant messages when the selected composer has explicit cursorDiskKV bubble bodies in known body fields.",
+        "Degrades to prompt-only evidence when a composer references missing, empty, or tool-only cursorDiskKV bubble rows.",
+        "Treats cursor.hooks.log, .cursor/ai-tracking, memory flags, and third-party extension state as provenance or auxiliary metadata only.",
+    ),
+    support_metadata=SourceSupportMetadata(
+        product_label="Cursor",
+        host_surface="Editor",
+        expected_transcript_completeness=TranscriptCompleteness.PARTIAL,
+        limitation_summary="Cursor editor recovery restores known explicit cursorDiskKV bubble body variants, but sessions whose headers resolve only to empty or tool-only rows remain partial and opt-in for unattended batches.",
+        limitations=(
+            "Composer sessions whose cursorDiskKV headers resolve only to empty or tool-only bubble rows still degrade to partial output, with missing bubble ids retained in session metadata.",
+            "Cursor host logs, memory flags, and third-party extension state never promote a session without confirmed transcript rows.",
+        ),
     ),
 )
 
@@ -43,10 +72,13 @@ APPLICATION_SUPPORT_GLOB = "**/Application Support/Cursor"
 GLOBAL_STATE_GLOB = "**/User/globalStorage/state.vscdb"
 HOOK_LOG_GLOB = "**/cursor.hooks.log"
 TRACKING_DB_GLOB = "**/.cursor/ai-tracking/ai-code-tracking.db"
-PARTIAL_LIMITATIONS = (
+PROMPT_FALLBACK_LIMITATIONS = (
+    "cursor_disk_kv_transcript_not_found",
     "assistant_body_unverified",
     "workspace_prompt_cache_not_explicitly_composer_scoped",
 )
+MISSING_ASSISTANT_LIMITATION = "assistant_body_missing_from_cursor_disk_kv"
+MISSING_USER_LIMITATION = "user_body_missing_from_cursor_disk_kv"
 THIRD_PARTY_STATE_KEYS = frozenset(
     {
         "memento/webviewView.chatgpt.sidebarView",
@@ -105,6 +137,21 @@ class CursorComposer:
 
 
 @dataclass(frozen=True, slots=True)
+class CursorTranscriptRecovery:
+    messages: tuple[NormalizedMessage, ...]
+    completeness: TranscriptCompleteness
+    limitations: tuple[str, ...]
+    source_name: str
+    source_path: str | None = None
+    header_count: int = 0
+    assistant_message_count: int = 0
+    skipped_tool_bubble_count: int = 0
+    missing_user_bubble_ids: tuple[str, ...] = ()
+    missing_assistant_bubble_ids: tuple[str, ...] = ()
+    skipped_tool_bubble_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class CursorEditorCollector:
     descriptor: SourceDescriptor = CURSOR_EDITOR_DESCRIPTOR
 
@@ -127,38 +174,25 @@ class CursorEditorCollector:
         workspace_state_paths = tuple(iter_workspace_state_paths(resolved_input_roots))
         auxiliary = discover_cursor_auxiliary_artifacts(resolved_input_roots)
         collected_at = utc_timestamp()
-        output_dir = archive_root / self.descriptor.key
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"memory_chat_v1-{timestamp_slug(collected_at)}.jsonl"
-
-        conversation_count = 0
-        message_count = 0
-        with output_path.open("w", encoding="utf-8") as handle:
-            for workspace_state_path in workspace_state_paths:
-                conversation = parse_workspace_state(
-                    workspace_state_path,
-                    collected_at=collected_at,
-                    auxiliary=auxiliary,
-                )
-                if conversation is None:
-                    continue
-                handle.write(json.dumps(conversation.to_dict(), ensure_ascii=False))
-                handle.write("\n")
-                conversation_count += 1
-                message_count += len(conversation.messages)
-
-        return CollectionResult(
+        conversations = (
+            parse_workspace_state(
+                workspace_state_path,
+                collected_at=collected_at,
+                auxiliary=auxiliary,
+            )
+            for workspace_state_path in workspace_state_paths
+        )
+        return write_incremental_collection(
             source=self.descriptor.key,
             archive_root=archive_root,
-            output_path=output_path,
             input_roots=resolved_input_roots,
             scanned_artifact_count=len(workspace_state_paths),
-            conversation_count=conversation_count,
-            message_count=message_count,
+            collected_at=collected_at,
+            conversations=conversations,
         )
 
     def _default_input_roots(self) -> tuple[Path, ...]:
-        return tuple(Path(root) for root in self.descriptor.default_input_roots)
+        return default_descriptor_input_roots(self.descriptor)
 
 
 def parse_workspace_state(
@@ -180,16 +214,22 @@ def parse_workspace_state(
     prompts_payload = state_values.get("aiService.prompts")
     generations_payload = state_values.get("aiService.generations")
 
-    if not isinstance(composer_payload, dict) or not isinstance(prompts_payload, list):
+    if not isinstance(composer_payload, dict):
         return None
+    resolved_prompts_payload = prompts_payload if isinstance(prompts_payload, list) else []
 
     selected_composer = _select_composer(composer_payload)
     if selected_composer is None:
         return None
     composer, selected, last_focused = selected_composer
 
-    messages = _build_prompt_messages(prompts_payload, generations_payload)
-    if not messages:
+    transcript = _recover_transcript(
+        composer_id=composer.composer_id,
+        prompts_payload=resolved_prompts_payload,
+        generations_payload=generations_payload,
+        auxiliary=auxiliary,
+    )
+    if transcript is None:
         return None
 
     workspace_id = resolved_path.parent.name
@@ -200,7 +240,7 @@ def parse_workspace_state(
     )
 
     provenance = ConversationProvenance(
-        session_started_at=composer.created_at or messages[0].timestamp,
+        session_started_at=composer.created_at or transcript.messages[0].timestamp,
         source="cursor",
         originator="cursor_editor",
         cwd=workspace_folder,
@@ -216,9 +256,9 @@ def parse_workspace_state(
         source=CURSOR_EDITOR_DESCRIPTOR.key,
         execution_context=CURSOR_EDITOR_DESCRIPTOR.execution_context,
         collected_at=collected_at or utc_timestamp(),
-        messages=tuple(messages),
-        transcript_completeness=TranscriptCompleteness.PARTIAL,
-        limitations=PARTIAL_LIMITATIONS,
+        messages=transcript.messages,
+        transcript_completeness=transcript.completeness,
+        limitations=transcript.limitations,
         source_session_id=composer.composer_id,
         source_artifact_path=str(resolved_path),
         session_metadata=_build_session_metadata(
@@ -227,8 +267,9 @@ def parse_workspace_state(
             composer=composer,
             selected=selected,
             last_focused=last_focused,
-            prompt_count=len(messages),
+            prompt_count=len(resolved_prompts_payload),
             generation_count=_count_generations(generations_payload),
+            transcript=transcript,
             auxiliary=auxiliary,
             ignored_state_keys=ignored_state_keys,
         ),
@@ -345,6 +386,248 @@ def _build_prompt_messages(
     return messages
 
 
+def _recover_transcript(
+    *,
+    composer_id: str,
+    prompts_payload: list[object],
+    generations_payload: object,
+    auxiliary: CursorAuxiliaryArtifacts | None,
+) -> CursorTranscriptRecovery | None:
+    generation_timestamps = _generation_timestamps(generations_payload)
+    transcript = _read_cursor_disk_kv_transcript(
+        composer_id=composer_id,
+        global_state_paths=auxiliary.global_state_paths if auxiliary is not None else (),
+        generation_timestamps=generation_timestamps,
+    )
+    if transcript is not None and transcript.messages:
+        return transcript
+
+    prompt_messages = tuple(_build_prompt_messages(prompts_payload, generations_payload))
+    if not prompt_messages:
+        return None
+
+    limitations = list(PROMPT_FALLBACK_LIMITATIONS)
+    if transcript is not None:
+        for limitation in transcript.limitations:
+            if limitation not in limitations:
+                limitations.append(limitation)
+
+    return CursorTranscriptRecovery(
+        messages=prompt_messages,
+        completeness=TranscriptCompleteness.PARTIAL,
+        limitations=tuple(limitations),
+        source_name="workspace_prompt_cache",
+        source_path=None if transcript is None else transcript.source_path,
+        header_count=0 if transcript is None else transcript.header_count,
+        assistant_message_count=(
+            0 if transcript is None else transcript.assistant_message_count
+        ),
+        skipped_tool_bubble_count=(
+            0 if transcript is None else transcript.skipped_tool_bubble_count
+        ),
+        missing_user_bubble_ids=(
+            () if transcript is None else transcript.missing_user_bubble_ids
+        ),
+        missing_assistant_bubble_ids=(
+            () if transcript is None else transcript.missing_assistant_bubble_ids
+        ),
+        skipped_tool_bubble_ids=(
+            () if transcript is None else transcript.skipped_tool_bubble_ids
+        ),
+    )
+
+
+def _read_cursor_disk_kv_transcript(
+    *,
+    composer_id: str,
+    global_state_paths: tuple[str, ...],
+    generation_timestamps: list[str | None],
+) -> CursorTranscriptRecovery | None:
+    if not global_state_paths:
+        return None
+
+    composer_key = _composer_data_key(composer_id)
+    for raw_global_state_path in global_state_paths:
+        global_state_path = Path(raw_global_state_path)
+        composer_payload = _read_cursor_disk_kv_values(
+            global_state_path,
+            (composer_key,),
+        ).get(composer_key)
+        if not isinstance(composer_payload, dict):
+            continue
+
+        transcript = _build_cursor_disk_kv_transcript(
+            composer_id=composer_id,
+            composer_payload=composer_payload,
+            global_state_path=global_state_path,
+            generation_timestamps=generation_timestamps,
+        )
+        if transcript is not None:
+            return transcript
+
+    return None
+
+
+def _build_cursor_disk_kv_transcript(
+    *,
+    composer_id: str,
+    composer_payload: dict[str, object],
+    global_state_path: Path,
+    generation_timestamps: list[str | None],
+) -> CursorTranscriptRecovery | None:
+    headers = composer_payload.get("fullConversationHeadersOnly")
+    if not isinstance(headers, list):
+        return None
+
+    ordered_bubbles: list[tuple[str, MessageRole]] = []
+    for header in headers:
+        if not isinstance(header, dict):
+            continue
+        bubble_id = _string_value(header.get("bubbleId"))
+        bubble_type = _int_value(header.get("type"))
+        if bubble_id is None or bubble_type not in (1, 2):
+            continue
+        ordered_bubbles.append(
+            (
+                bubble_id,
+                MessageRole.USER if bubble_type == 1 else MessageRole.ASSISTANT,
+            )
+        )
+
+    if not ordered_bubbles:
+        return None
+
+    bubble_values = _read_cursor_disk_kv_values(
+        global_state_path,
+        tuple(
+            _bubble_data_key(composer_id, bubble_id)
+            for bubble_id, _ in ordered_bubbles
+        ),
+    )
+
+    messages: list[NormalizedMessage] = []
+    assistant_message_count = 0
+    missing_assistant_bubble_ids: list[str] = []
+    missing_user_bubble_ids: list[str] = []
+    skipped_tool_bubble_count = 0
+    skipped_tool_bubble_ids: list[str] = []
+
+    for bubble_id, role in ordered_bubbles:
+        bubble_payload = bubble_values.get(_bubble_data_key(composer_id, bubble_id))
+        if not isinstance(bubble_payload, dict):
+            if role == MessageRole.ASSISTANT:
+                missing_assistant_bubble_ids.append(bubble_id)
+            else:
+                missing_user_bubble_ids.append(bubble_id)
+            continue
+
+        body = _extract_bubble_body(bubble_payload)
+        if body is None:
+            if role == MessageRole.ASSISTANT and _is_tool_only_bubble(bubble_payload):
+                skipped_tool_bubble_count += 1
+                skipped_tool_bubble_ids.append(bubble_id)
+                continue
+            if role == MessageRole.ASSISTANT:
+                missing_assistant_bubble_ids.append(bubble_id)
+            else:
+                missing_user_bubble_ids.append(bubble_id)
+            continue
+        text, body_source = body
+
+        timestamp = None
+        if role == MessageRole.ASSISTANT:
+            if assistant_message_count < len(generation_timestamps):
+                timestamp = generation_timestamps[assistant_message_count]
+            assistant_message_count += 1
+
+        messages.append(
+            NormalizedMessage(
+                role=role,
+                text=text,
+                timestamp=timestamp,
+                source_message_id=bubble_id,
+                provenance=MessageProvenance(body_source=body_source),
+            )
+        )
+
+    limitations: list[str] = []
+    if missing_user_bubble_ids:
+        limitations.append(MISSING_USER_LIMITATION)
+    if missing_assistant_bubble_ids:
+        limitations.append(MISSING_ASSISTANT_LIMITATION)
+    if assistant_message_count == 0 and not missing_assistant_bubble_ids:
+        limitations.append("assistant_body_unverified")
+
+    completeness = (
+        TranscriptCompleteness.COMPLETE
+        if assistant_message_count > 0 and not limitations
+        else TranscriptCompleteness.PARTIAL
+    )
+    return CursorTranscriptRecovery(
+        messages=tuple(messages),
+        completeness=completeness,
+        limitations=tuple(limitations),
+        source_name="cursor_disk_kv",
+        source_path=str(global_state_path),
+        header_count=len(ordered_bubbles),
+        assistant_message_count=assistant_message_count,
+        skipped_tool_bubble_count=skipped_tool_bubble_count,
+        missing_user_bubble_ids=tuple(missing_user_bubble_ids),
+        missing_assistant_bubble_ids=tuple(missing_assistant_bubble_ids),
+        skipped_tool_bubble_ids=tuple(skipped_tool_bubble_ids),
+    )
+
+
+def _is_tool_only_bubble(bubble_payload: dict[str, object]) -> bool:
+    tool_former_data = bubble_payload.get("toolFormerData")
+    if isinstance(tool_former_data, dict):
+        return bool(tool_former_data)
+    if isinstance(tool_former_data, list):
+        return bool(tool_former_data)
+    return False
+
+
+def _extract_bubble_body(bubble_payload: dict[str, object]) -> tuple[str, str] | None:
+    for key_path in (
+        ("text",),
+        ("markdown",),
+        ("markdownText",),
+        ("body", "text"),
+        ("body", "markdown"),
+        ("body", "content"),
+        ("body", "value"),
+        ("content", "text"),
+        ("content", "markdown"),
+        ("content", "content"),
+        ("content", "value"),
+        ("message", "text"),
+        ("message", "markdown"),
+        ("message", "content"),
+        ("message", "value"),
+        ("richText", "text"),
+        ("richText", "markdown"),
+        ("richText", "content"),
+        ("body",),
+        ("content",),
+        ("message",),
+    ):
+        raw_value = _nested_value(bubble_payload, key_path)
+        text = _clean_prompt_text(raw_value)
+        if text is None:
+            continue
+        return text, "cursor_disk_kv." + ".".join(key_path)
+    return None
+
+
+def _nested_value(payload: object, key_path: tuple[str, ...]) -> object:
+    current = payload
+    for key in key_path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
 def _select_composer(
     composer_payload: dict[str, object],
 ) -> tuple[CursorComposer, bool, bool] | None:
@@ -401,6 +684,7 @@ def _build_session_metadata(
     last_focused: bool,
     prompt_count: int,
     generation_count: int,
+    transcript: CursorTranscriptRecovery,
     auxiliary: CursorAuxiliaryArtifacts | None,
     ignored_state_keys: tuple[str, ...],
 ) -> dict[str, object]:
@@ -409,9 +693,23 @@ def _build_session_metadata(
         "composer_id": composer.composer_id,
         "prompt_count": prompt_count,
         "generation_count": generation_count,
+        "reconstructed_message_count": len(transcript.messages),
+        "transcript_source": transcript.source_name,
         "selected": selected,
         "last_focused": last_focused,
     }
+    if transcript.header_count:
+        payload["transcript_header_count"] = transcript.header_count
+    if transcript.skipped_tool_bubble_count:
+        payload["skipped_tool_bubble_count"] = transcript.skipped_tool_bubble_count
+    if transcript.missing_user_bubble_ids:
+        payload["missing_user_bubble_ids"] = list(transcript.missing_user_bubble_ids)
+    if transcript.missing_assistant_bubble_ids:
+        payload["missing_assistant_bubble_ids"] = list(
+            transcript.missing_assistant_bubble_ids
+        )
+    if transcript.skipped_tool_bubble_ids:
+        payload["skipped_tool_bubble_ids"] = list(transcript.skipped_tool_bubble_ids)
     if workspace_folder is not None:
         payload["workspace_folder"] = workspace_folder
     if composer.name is not None:
@@ -473,6 +771,14 @@ def _clean_prompt_text(value: object) -> str | None:
     return stripped
 
 
+def _composer_data_key(composer_id: str) -> str:
+    return f"composerData:{composer_id}"
+
+
+def _bubble_data_key(composer_id: str, bubble_id: str) -> str:
+    return f"bubbleId:{composer_id}:{bubble_id}"
+
+
 def _read_workspace_folder(workspace_json_path: Path) -> str | None:
     try:
         payload = json.loads(workspace_json_path.read_text(encoding="utf-8"))
@@ -494,45 +800,121 @@ def _read_state_values(
     state_db_path: Path,
     keys: tuple[str, ...],
 ) -> dict[str, object]:
-    if not state_db_path.is_file():
+    return _read_table_values(state_db_path, table_name="ItemTable", keys=keys)
+
+
+def _read_cursor_disk_kv_values(
+    state_db_path: Path,
+    keys: tuple[str, ...],
+) -> dict[str, object]:
+    return _read_table_values(state_db_path, table_name="cursorDiskKV", keys=keys)
+
+
+def _read_table_values(
+    state_db_path: Path,
+    *,
+    table_name: str,
+    keys: tuple[str, ...],
+) -> dict[str, object]:
+    if not state_db_path.is_file() or not keys:
         return {}
 
-    try:
-        with sqlite3.connect(str(state_db_path)) as connection:
-            rows = connection.execute(
-                "SELECT key, value FROM ItemTable WHERE key IN ({})".format(
-                    ",".join("?" for _ in keys)
-                ),
-                keys,
-            ).fetchall()
-    except sqlite3.DatabaseError:
-        return {}
+    rows = _query_sqlite_rows(
+        state_db_path,
+        "SELECT key, value FROM {table} WHERE key IN ({placeholders})".format(
+            table=table_name,
+            placeholders=",".join("?" for _ in keys),
+        ),
+        keys,
+    )
 
     payload: dict[str, object] = {}
     for key, raw_value in rows:
-        if not isinstance(key, str) or not isinstance(raw_value, str):
+        if not isinstance(key, str):
             continue
-        try:
-            payload[key] = json.loads(raw_value)
-        except json.JSONDecodeError:
-            payload[key] = raw_value
+        payload[key] = _parse_json_sql_value(raw_value)
     return payload
+
+
+def _parse_json_sql_value(raw_value: object) -> object:
+    if isinstance(raw_value, memoryview):
+        raw_value = raw_value.tobytes()
+    if isinstance(raw_value, bytes):
+        try:
+            raw_text = raw_value.decode("utf-8")
+        except UnicodeDecodeError:
+            return raw_value
+    elif isinstance(raw_value, str):
+        raw_text = raw_value
+    else:
+        return raw_value
+
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError:
+        return raw_text
+
+
+def _query_sqlite_rows(
+    state_db_path: Path,
+    query: str,
+    parameters: tuple[object, ...],
+) -> list[tuple[object, ...]]:
+    try:
+        return _query_sqlite_rows_once(state_db_path, query, parameters)
+    except sqlite3.DatabaseError as error:
+        if "no such table" in str(error).lower():
+            return []
+
+        copied_path = _copy_sqlite_database(state_db_path)
+        if copied_path is None:
+            return []
+        try:
+            return _query_sqlite_rows_once(copied_path, query, parameters)
+        except sqlite3.DatabaseError:
+            return []
+        finally:
+            copied_path.unlink(missing_ok=True)
+
+
+def _query_sqlite_rows_once(
+    state_db_path: Path,
+    query: str,
+    parameters: tuple[object, ...],
+) -> list[tuple[object, ...]]:
+    if not state_db_path.is_file():
+        return []
+
+    with sqlite3.connect(str(state_db_path)) as connection:
+        rows = connection.execute(query, parameters).fetchall()
+    return [tuple(row) for row in rows]
+
+
+def _copy_sqlite_database(state_db_path: Path) -> Path | None:
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix=f"{state_db_path.stem}-",
+            suffix=state_db_path.suffix,
+            delete=False,
+        ) as handle:
+            copied_path = Path(handle.name)
+        shutil.copyfile(state_db_path, copied_path)
+    except OSError:
+        return None
+    return copied_path
 
 
 def _read_item_keys(state_db_path: Path, keys: frozenset[str]) -> tuple[str, ...]:
     if not state_db_path.is_file():
         return ()
 
-    try:
-        with sqlite3.connect(str(state_db_path)) as connection:
-            rows = connection.execute(
-                "SELECT key FROM ItemTable WHERE key IN ({})".format(
-                    ",".join("?" for _ in keys)
-                ),
-                tuple(sorted(keys)),
-            ).fetchall()
-    except sqlite3.DatabaseError:
-        return ()
+    rows = _query_sqlite_rows(
+        state_db_path,
+        "SELECT key FROM ItemTable WHERE key IN ({})".format(
+            ",".join("?" for _ in keys)
+        ),
+        tuple(sorted(keys)),
+    )
 
     return tuple(sorted(key for (key,) in rows if isinstance(key, str)))
 

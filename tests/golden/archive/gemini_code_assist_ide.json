@@ -1,0 +1,418 @@
+{
+  "case": "gemini_code_assist_ide",
+  "descriptor": {
+    "display_name": "Gemini Code Assist IDE",
+    "execution_context": "ide_extension",
+    "support_level": "partial",
+    "support_metadata": {
+      "expected_transcript_completeness": "partial",
+      "host_surface": "IDE extension",
+      "limitation_summary": "Gemini-owned chatSessions with recoverable body shapes are promoted, but foreign providers and Gemini-owned body-missing sessions still degrade to explicit metadata-only residue, so the source stays partial and opt-in.",
+      "limitations": [
+        "Only explicitly Gemini-owned chatSessions with recoverable request or response bodies are promoted to transcript rows.",
+        "Foreign or unknown provider chatSessions, and Gemini-owned sessions without a confirmed body, remain metadata-only residue with explicit diagnostics."
+      ],
+      "product_label": "Gemini Code Assist"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Gemini Code Assist",
+    "build_markers": [
+      "chat_session_index_version=1"
+    ],
+    "version_markers": [
+      "2.73.0"
+    ]
+  },
+  "fixture_subpath": "gemini_code_assist_ide",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 3,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 6,
+    "output_path": "<ARCHIVE_ROOT>/gemini_code_assist_ide/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 3,
+    "skipped_conversation_count": 0,
+    "source": "gemini_code_assist_ide",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 3
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_extension",
+      "limitations": [
+        "no_confirmed_gemini_code_assist_ide_transcript_store",
+        "metadata_only_ide_state",
+        "chat_session_provider_attribution_required"
+      ],
+      "messages": [],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/cloud-code",
+            "<FIXTURE_ROOT>/Library/Application Support/google-vscode-extension"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/globalStorage/state.vscdb"
+          ]
+        },
+        "conversation_origin": "global_state_residue",
+        "originator": "google.geminicodeassist",
+        "source": "vscode"
+      },
+      "session_metadata": {
+        "chat_view_hidden": false,
+        "cloudcode_hats_index_count": 1,
+        "cloudcode_session_index_count": 2,
+        "credential_artifact_count": 2,
+        "credential_artifacts_present": true,
+        "has_run_once": true,
+        "install_artifact_count": 1,
+        "install_artifacts_present": true,
+        "last_chat_mode_was_agent": true,
+        "last_opened_version": "2.73.0",
+        "new_chat_is_agent": true,
+        "onboarding_tooltip_invoked_once": true,
+        "outline_view_hidden": false,
+        "scope": "global_state",
+        "show_agent_tips_card": false
+      },
+      "source": "gemini_code_assist_ide",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/globalStorage/state.vscdb",
+      "source_session_id": "vscode:global",
+      "transcript_completeness": "unsupported"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_extension",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "request-1",
+          "text": "Summarize the current Gemini IDE collector.",
+          "timestamp": "2026-03-14T10:00:00Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "response-1",
+          "text": "The collector only emitted metadata-only rows before this upgrade.",
+          "timestamp": "2026-03-14T10:00:04Z"
+        },
+        {
+          "role": "user",
+          "source_message_id": "request-2",
+          "text": "Keep auth files and install residue out of transcript messages.",
+          "timestamp": "2026-03-14T10:01:00Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "request-2:response-2",
+          "text": "Confirmed.\n\nThose files remain provenance-only artifacts.",
+          "timestamp": "2026-03-14T10:01:06Z"
+        },
+        {
+          "role": "user",
+          "source_message_id": "request-3",
+          "text": "Recover the segmented Gemini body shape too.",
+          "timestamp": "2026-03-14T10:02:00Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "request-3:response-3",
+          "text": "Recovered from the alternate segmented Gemini response body.",
+          "timestamp": "2026-03-14T10:02:08Z"
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/cloud-code",
+            "<FIXTURE_ROOT>/Library/Application Support/google-vscode-extension"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/state.vscdb"
+          ]
+        },
+        "cwd": "<REPO_ROOT>",
+        "originator": "google.geminicodeassist",
+        "session_started_at": "2026-03-14T10:00:00Z",
+        "source": "vscode"
+      },
+      "session_metadata": {
+        "assistant_message_count": 3,
+        "chat_session_attribution": [
+          {
+            "is_empty": false,
+            "ownership": "gemini",
+            "ownership_reason": "explicit_gemini_provider_marker",
+            "provider": "Gemini Code Assist",
+            "provider_candidates": [
+              "Gemini Code Assist",
+              "google.geminicodeassist"
+            ],
+            "request_count": 3,
+            "session_id": "gemini-candidate",
+            "source_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/gemini-candidate.json"
+          },
+          {
+            "is_empty": false,
+            "ownership": "gemini",
+            "ownership_reason": "explicit_gemini_provider_marker",
+            "provider": "Gemini Code Assist",
+            "provider_candidates": [
+              "Gemini Code Assist",
+              "google.geminicodeassist"
+            ],
+            "request_count": 1,
+            "session_id": "gemini-body-missing",
+            "source_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/gemini-body-missing.json"
+          },
+          {
+            "is_empty": true,
+            "ownership": "foreign",
+            "ownership_reason": "explicit_foreign_provider_marker",
+            "provider": "GitHub Copilot",
+            "provider_candidates": [
+              "GitHub Copilot",
+              "GitHub.copilot-chat"
+            ],
+            "request_count": 1,
+            "session_id": "copilot-session-1",
+            "source_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/copilot-session-1.json"
+          }
+        ],
+        "chat_session_id": "gemini-candidate",
+        "chat_session_index_version": 1,
+        "chat_session_is_empty": false,
+        "chat_session_ownership": "gemini",
+        "chat_session_provider": "Gemini Code Assist",
+        "chat_session_request_count": 3,
+        "chat_view_memento_keys": [
+          "debug",
+          "selectedTab"
+        ],
+        "chat_view_state": {
+          "collapsed": false,
+          "is_hidden": true,
+          "size": 972
+        },
+        "credential_artifacts_present": true,
+        "empty_indexed_session_count": 1,
+        "foreign_chat_session_count": 1,
+        "gemini_owned_chat_session_count": 2,
+        "indexed_session_count": 3,
+        "install_artifacts_present": true,
+        "latest_indexed_message_at": "2026-03-14T10:05:00Z",
+        "number_of_visible_chat_views": 1,
+        "outline_view_state": {
+          "collapsed": false,
+          "is_hidden": false,
+          "size": 256
+        },
+        "scope": "chat_session",
+        "unknown_chat_session_count": 0,
+        "user_message_count": 3,
+        "workspace_folder": "<REPO_ROOT>",
+        "workspace_id": "workspace-alpha"
+      },
+      "source": "gemini_code_assist_ide",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/gemini-candidate.json",
+      "source_session_id": "vscode:workspace-alpha:gemini-candidate"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_extension",
+      "limitations": [
+        "metadata_only_ide_state",
+        "gemini_owned_chat_session_body_missing",
+        "foreign_chat_session_rejected"
+      ],
+      "messages": [],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/cloud-code",
+            "<FIXTURE_ROOT>/Library/Application Support/google-vscode-extension"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/state.vscdb"
+          ]
+        },
+        "conversation_origin": "workspace_chat_session_residue",
+        "cwd": "<REPO_ROOT>",
+        "originator": "google.geminicodeassist",
+        "source": "vscode"
+      },
+      "session_metadata": {
+        "chat_session_attribution": [
+          {
+            "is_empty": false,
+            "ownership": "gemini",
+            "ownership_reason": "explicit_gemini_provider_marker",
+            "provider": "Gemini Code Assist",
+            "provider_candidates": [
+              "Gemini Code Assist",
+              "google.geminicodeassist"
+            ],
+            "request_count": 3,
+            "session_id": "gemini-candidate",
+            "source_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/gemini-candidate.json"
+          },
+          {
+            "is_empty": false,
+            "ownership": "gemini",
+            "ownership_reason": "explicit_gemini_provider_marker",
+            "provider": "Gemini Code Assist",
+            "provider_candidates": [
+              "Gemini Code Assist",
+              "google.geminicodeassist"
+            ],
+            "request_count": 1,
+            "session_id": "gemini-body-missing",
+            "source_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/gemini-body-missing.json"
+          },
+          {
+            "is_empty": true,
+            "ownership": "foreign",
+            "ownership_reason": "explicit_foreign_provider_marker",
+            "provider": "GitHub Copilot",
+            "provider_candidates": [
+              "GitHub Copilot",
+              "GitHub.copilot-chat"
+            ],
+            "request_count": 1,
+            "session_id": "copilot-session-1",
+            "source_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/copilot-session-1.json"
+          }
+        ],
+        "chat_session_index_version": 1,
+        "chat_view_memento_keys": [
+          "debug",
+          "selectedTab"
+        ],
+        "chat_view_state": {
+          "collapsed": false,
+          "is_hidden": true,
+          "size": 972
+        },
+        "credential_artifacts_present": true,
+        "empty_indexed_session_count": 1,
+        "foreign_chat_session_count": 1,
+        "gemini_owned_chat_session_count": 2,
+        "indexed_session_count": 3,
+        "install_artifacts_present": true,
+        "latest_indexed_message_at": "2026-03-14T10:05:00Z",
+        "metadata_only_chat_session_residue": [
+          {
+            "is_empty": false,
+            "limitations": [
+              "gemini_owned_chat_session_body_missing"
+            ],
+            "ownership": "gemini",
+            "ownership_reason": "explicit_gemini_provider_marker",
+            "provider": "Gemini Code Assist",
+            "provider_candidates": [
+              "Gemini Code Assist",
+              "google.geminicodeassist"
+            ],
+            "request_count": 1,
+            "residue_kind": "gemini_provider_explicit_but_body_missing",
+            "session_id": "gemini-body-missing",
+            "source_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/gemini-body-missing.json"
+          },
+          {
+            "is_empty": true,
+            "limitations": [
+              "foreign_chat_session_rejected"
+            ],
+            "ownership": "foreign",
+            "ownership_reason": "explicit_foreign_provider_marker",
+            "provider": "GitHub Copilot",
+            "provider_candidates": [
+              "GitHub Copilot",
+              "GitHub.copilot-chat"
+            ],
+            "request_count": 1,
+            "residue_kind": "foreign_provider_rejected",
+            "session_id": "copilot-session-1",
+            "source_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/chatSessions/copilot-session-1.json"
+          }
+        ],
+        "metadata_only_chat_session_residue_count": 2,
+        "number_of_visible_chat_views": 1,
+        "outline_view_state": {
+          "collapsed": false,
+          "is_hidden": false,
+          "size": 256
+        },
+        "scope": "workspace_state_residue",
+        "transcript_chat_session_count": 1,
+        "unknown_chat_session_count": 0,
+        "workspace_folder": "<REPO_ROOT>",
+        "workspace_id": "workspace-alpha"
+      },
+      "source": "gemini_code_assist_ide",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Code/User/workspaceStorage/workspace-alpha/state.vscdb",
+      "source_session_id": "vscode:workspace-alpha:residue",
+      "transcript_completeness": "unsupported"
+    }
+  ],
+  "source": "gemini_code_assist_ide"
+}

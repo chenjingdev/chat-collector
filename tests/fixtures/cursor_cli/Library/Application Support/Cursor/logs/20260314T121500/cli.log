@@ -1,0 +1,2 @@
+{"argv":["cursor","agent"],"logsPath":"/Users/chenjing/Library/Application Support/Cursor/logs/20260314T121500","headless":false,"verbose":false,"status":false,"trace":false,"list-extensions":false,"show-versions":false}
+prompt-only cli log text that must stay out of transcript messages

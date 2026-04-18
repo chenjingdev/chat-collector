@@ -7,17 +7,28 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from ..incremental import write_incremental_collection
 from ..models import (
     AppShellProvenance,
     CollectionPlan,
     CollectionResult,
     ConversationProvenance,
+    MessageRole,
     NormalizedConversation,
+    NormalizedMessage,
     SourceDescriptor,
+    SourceSupportMetadata,
     SupportLevel,
     TranscriptCompleteness,
 )
-from .codex_rollout import resolve_input_roots, timestamp_slug, utc_timestamp
+from ..source_roots import (
+    all_platform_root,
+    darwin_root,
+    default_descriptor_input_roots,
+    linux_root,
+    windows_root,
+)
+from .codex_rollout import resolve_input_roots, utc_timestamp
 
 ANTIGRAVITY_EDITOR_VIEW_DESCRIPTOR = SourceDescriptor(
     key="antigravity_editor_view",
@@ -28,10 +39,27 @@ ANTIGRAVITY_EDITOR_VIEW_DESCRIPTOR = SourceDescriptor(
         "~/Library/Application Support/Antigravity",
         "~/.gemini/antigravity",
     ),
+    artifact_root_candidates=(
+        darwin_root("$HOME/Library/Application Support/Antigravity"),
+        linux_root("$XDG_CONFIG_HOME/Antigravity"),
+        windows_root("$APPDATA/Antigravity"),
+        all_platform_root("$HOME/.gemini/antigravity"),
+    ),
     notes=(
-        "Uses ~/.gemini/antigravity/conversations/<uuid>.pb as the primary session-family discovery root.",
-        "Returns explicit undecoded metadata-only rows until protobuf message field mapping is confirmed.",
+        "Uses ~/.gemini/antigravity/conversations/<uuid>.pb as the primary transcript source.",
+        "Reconstructs user and assistant messages from the confirmed raw conversation protobuf variant when session and message fields match the verified mapping.",
+        "Falls back to partial or unsupported rows with explicit variant_unknown or decode_failed diagnostics when conversation blob framing or message mapping differs from the confirmed variant.",
         "Treats brain, annotations, browser recordings, shared state, html artifacts, and daemon logs as provenance or noise rather than transcript body.",
+    ),
+    support_metadata=SourceSupportMetadata(
+        product_label="Antigravity",
+        host_surface="Editor view",
+        expected_transcript_completeness=TranscriptCompleteness.PARTIAL,
+        limitation_summary="Only the confirmed raw Antigravity conversation protobuf variant is promoted to transcript rows; current operator-local opaque blobs degrade to explicit variant_unknown or decode_failed diagnostics instead of false-complete output.",
+        limitations=(
+            "Only the verified raw conversation protobuf field mapping is promoted to complete transcript rows.",
+            "Opaque or drifted conversation blobs surface explicit variant_unknown or decode_failed diagnostics and remain partial or unsupported until a new framing is confirmed.",
+        ),
     ),
 )
 
@@ -101,11 +129,23 @@ WORKSPACE_STATE_KEYS = (
     "memento/antigravity.jetskiArtifactsEditor",
     "memento/antigravity.antigravityReviewChangesEditor",
 )
-UNSUPPORTED_LIMITATIONS = (
-    "opaque_conversation_protobuf",
-    "message_field_mapping_unconfirmed",
-    "metadata_only_session_family",
-)
+CONVERSATION_SESSION_ID_FIELD = 1
+CONVERSATION_MESSAGE_FIELD = 2
+MESSAGE_ID_FIELD = 1
+MESSAGE_ROLE_FIELD = 2
+MESSAGE_TEXT_FIELD = 3
+MESSAGE_TIMESTAMP_FIELD = 4
+ROLE_ENUM_MAP = {
+    1: MessageRole.USER,
+    2: MessageRole.ASSISTANT,
+}
+VARIANT_UNKNOWN_LIMITATION = "variant_unknown"
+DECODE_FAILED_LIMITATION = "decode_failed"
+METADATA_ONLY_LIMITATION = "metadata_only_session_family"
+SESSION_ID_MISMATCH_LIMITATION = "conversation_protobuf_session_id_mismatch"
+MISSING_USER_LIMITATION = "user_message_missing_from_conversation_protobuf"
+MISSING_ASSISTANT_LIMITATION = "assistant_message_missing_from_conversation_protobuf"
+UNKNOWN_VARIANT_WIRE_TYPES = frozenset({3, 4, 6, 7})
 NOISE_EXCLUSIONS = (
     "browser_recordings",
     "html_artifacts",
@@ -149,6 +189,47 @@ class AntigravityArtifacts:
 
 
 @dataclass(frozen=True, slots=True)
+class ProtobufField:
+    number: int
+    wire_type: int
+    value: int | bytes
+
+
+class ProtobufDecodeError(ValueError):
+    def __init__(
+        self,
+        message: str,
+        *,
+        offset: int,
+        stage: str,
+        field_number: int | None = None,
+        wire_type: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.offset = offset
+        self.stage = stage
+        self.field_number = field_number
+        self.wire_type = wire_type
+
+
+@dataclass(frozen=True, slots=True)
+class AntigravityTranscriptRecovery:
+    messages: tuple[NormalizedMessage, ...]
+    completeness: TranscriptCompleteness
+    limitations: tuple[str, ...] = ()
+    protobuf_session_id: str | None = None
+    session_started_at: str | None = None
+    decode_status: str = "unsupported"
+    decode_error: str | None = None
+    decoded_message_count: int = 0
+    skipped_message_count: int = 0
+    user_message_count: int = 0
+    assistant_message_count: int = 0
+    diagnostic_reason: str | None = None
+    diagnostic_details: dict[str, object] | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class AntigravityEditorViewCollector:
     descriptor: SourceDescriptor = ANTIGRAVITY_EDITOR_VIEW_DESCRIPTOR
 
@@ -170,36 +251,25 @@ class AntigravityEditorViewCollector:
         resolved_input_roots = resolve_input_roots(input_roots or self._default_input_roots())
         artifacts = discover_antigravity_editor_view_artifacts(resolved_input_roots)
         collected_at = utc_timestamp()
-        output_dir = archive_root / self.descriptor.key
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"memory_chat_v1-{timestamp_slug(collected_at)}.jsonl"
-
-        conversation_count = 0
-        with output_path.open("w", encoding="utf-8") as handle:
-            for conversation_path in artifacts.conversation_paths:
-                conversation = parse_conversation_blob(
-                    Path(conversation_path),
-                    collected_at=collected_at,
-                    artifacts=artifacts,
-                )
-                if conversation is None:
-                    continue
-                handle.write(json.dumps(conversation.to_dict(), ensure_ascii=False))
-                handle.write("\n")
-                conversation_count += 1
-
-        return CollectionResult(
+        conversations = (
+            parse_conversation_blob(
+                Path(conversation_path),
+                collected_at=collected_at,
+                artifacts=artifacts,
+            )
+            for conversation_path in artifacts.conversation_paths
+        )
+        return write_incremental_collection(
             source=self.descriptor.key,
             archive_root=archive_root,
-            output_path=output_path,
             input_roots=resolved_input_roots,
             scanned_artifact_count=len(artifacts.conversation_paths),
-            conversation_count=conversation_count,
-            message_count=0,
+            collected_at=collected_at,
+            conversations=conversations,
         )
 
     def _default_input_roots(self) -> tuple[Path, ...]:
-        return tuple(Path(root) for root in self.descriptor.default_input_roots)
+        return default_descriptor_input_roots(self.descriptor)
 
 
 def discover_antigravity_editor_view_artifacts(
@@ -293,6 +363,7 @@ def parse_conversation_blob(
         return None
 
     artifact_view = artifacts or AntigravityArtifacts()
+    transcript = _recover_conversation_transcript(resolved_path, session_id=session_id)
     brain_metadata = _brain_metadata(_match_session_path(artifact_view.brain_dirs, session_id))
     annotation_metadata = _annotation_metadata(
         _match_session_path(artifact_view.annotation_paths, session_id)
@@ -302,12 +373,38 @@ def parse_conversation_blob(
     )
     shared_state_metadata, cwd = _shared_state_metadata(artifact_view, session_id)
 
+    conversation_blob_metadata: dict[str, object] = {
+        "path": str(resolved_path),
+        "size_bytes": resolved_path.stat().st_size,
+        "decode_status": transcript.decode_status,
+    }
+    if transcript.decode_error is not None:
+        conversation_blob_metadata["decode_error"] = transcript.decode_error
+    if transcript.diagnostic_reason is not None:
+        conversation_blob_metadata["diagnostic_reason"] = transcript.diagnostic_reason
+    if transcript.diagnostic_details is not None:
+        conversation_blob_metadata["diagnostic_details"] = transcript.diagnostic_details
+    if transcript.protobuf_session_id is not None:
+        conversation_blob_metadata["protobuf_session_id"] = transcript.protobuf_session_id
+    if transcript.messages:
+        conversation_blob_metadata["confirmed_field_mapping"] = {
+            "session_id_field": CONVERSATION_SESSION_ID_FIELD,
+            "message_field": CONVERSATION_MESSAGE_FIELD,
+            "message_id_field": MESSAGE_ID_FIELD,
+            "message_role_field": MESSAGE_ROLE_FIELD,
+            "message_text_field": MESSAGE_TEXT_FIELD,
+            "message_timestamp_field": MESSAGE_TIMESTAMP_FIELD,
+        }
+        conversation_blob_metadata["recovered_message_count"] = transcript.decoded_message_count
+        conversation_blob_metadata["user_message_count"] = transcript.user_message_count
+        conversation_blob_metadata["assistant_message_count"] = (
+            transcript.assistant_message_count
+        )
+    if transcript.skipped_message_count:
+        conversation_blob_metadata["skipped_message_count"] = transcript.skipped_message_count
+
     session_metadata: dict[str, object] = {
-        "conversation_blob": {
-            "path": str(resolved_path),
-            "size_bytes": resolved_path.stat().st_size,
-            "decode_status": "undecoded",
-        },
+        "conversation_blob": conversation_blob_metadata,
         "noise_separation": {
             "excluded_from_messages": list(NOISE_EXCLUSIONS),
             "html_artifact_root_count": len(artifact_view.html_artifact_roots),
@@ -327,19 +424,348 @@ def parse_conversation_blob(
         source=ANTIGRAVITY_EDITOR_VIEW_DESCRIPTOR.key,
         execution_context=ANTIGRAVITY_EDITOR_VIEW_DESCRIPTOR.execution_context,
         collected_at=collected_at or utc_timestamp(),
-        messages=(),
-        transcript_completeness=TranscriptCompleteness.UNSUPPORTED,
-        limitations=UNSUPPORTED_LIMITATIONS,
+        messages=transcript.messages,
+        transcript_completeness=transcript.completeness,
+        limitations=transcript.limitations,
         source_session_id=session_id,
         source_artifact_path=str(resolved_path),
         session_metadata=session_metadata,
         provenance=ConversationProvenance(
+            session_started_at=transcript.session_started_at,
             source="antigravity",
             originator="antigravity_editor_view",
             cwd=cwd,
             app_shell=artifact_view.build_app_shell(),
         ),
     )
+
+
+def _recover_conversation_transcript(
+    conversation_path: Path,
+    *,
+    session_id: str,
+) -> AntigravityTranscriptRecovery:
+    try:
+        payload = conversation_path.read_bytes()
+    except FileNotFoundError:
+        return AntigravityTranscriptRecovery(
+            messages=(),
+            completeness=TranscriptCompleteness.UNSUPPORTED,
+            limitations=(DECODE_FAILED_LIMITATION, METADATA_ONLY_LIMITATION),
+            decode_status="decode_failed",
+            decode_error="decode_failed: conversation blob disappeared before parsing",
+            diagnostic_reason=DECODE_FAILED_LIMITATION,
+            diagnostic_details={"reason": "file_missing"},
+        )
+
+    try:
+        fields = _decode_protobuf_fields(payload)
+    except ProtobufDecodeError as exc:
+        diagnostic_reason, decode_error, diagnostic_details = (
+            _diagnose_top_level_decode_failure(exc)
+        )
+        limitations = (
+            (diagnostic_reason, DECODE_FAILED_LIMITATION, METADATA_ONLY_LIMITATION)
+            if diagnostic_reason != DECODE_FAILED_LIMITATION
+            else (DECODE_FAILED_LIMITATION, METADATA_ONLY_LIMITATION)
+        )
+        return AntigravityTranscriptRecovery(
+            messages=(),
+            completeness=TranscriptCompleteness.UNSUPPORTED,
+            limitations=_unique_limitations(limitations),
+            decode_status="decode_failed",
+            decode_error=decode_error,
+            diagnostic_reason=diagnostic_reason,
+            diagnostic_details=diagnostic_details,
+        )
+
+    protobuf_session_id = _first_uuid_string(fields, CONVERSATION_SESSION_ID_FIELD)
+    messages: list[NormalizedMessage] = []
+    skipped_message_count = 0
+    user_message_count = 0
+    assistant_message_count = 0
+
+    for field in fields:
+        if field.number != CONVERSATION_MESSAGE_FIELD or not isinstance(field.value, bytes):
+            continue
+        decoded_message = _decode_confirmed_message(field.value)
+        if decoded_message is None:
+            skipped_message_count += 1
+            continue
+        messages.append(decoded_message)
+        if decoded_message.role == MessageRole.USER:
+            user_message_count += 1
+        if decoded_message.role == MessageRole.ASSISTANT:
+            assistant_message_count += 1
+
+    limitations: list[str] = []
+    if protobuf_session_id is not None and protobuf_session_id != session_id:
+        limitations.append(SESSION_ID_MISMATCH_LIMITATION)
+
+    if not messages:
+        return AntigravityTranscriptRecovery(
+            messages=(),
+            completeness=TranscriptCompleteness.UNSUPPORTED,
+            limitations=_unique_limitations(
+                (
+                    VARIANT_UNKNOWN_LIMITATION,
+                    METADATA_ONLY_LIMITATION,
+                    *limitations,
+                )
+            ),
+            protobuf_session_id=protobuf_session_id,
+            decode_status="variant_unknown",
+            decode_error=(
+                "variant_unknown: top-level protobuf decoded but the message field "
+                "mapping did not match the confirmed transcript-bearing variant"
+            ),
+            skipped_message_count=skipped_message_count,
+            diagnostic_reason=VARIANT_UNKNOWN_LIMITATION,
+            diagnostic_details={
+                "reason": "message_field_mapping_unconfirmed",
+                "scope": "conversation",
+                "skipped_message_count": skipped_message_count,
+            },
+        )
+
+    diagnostic_reason: str | None = None
+    diagnostic_details: dict[str, object] | None = None
+    if skipped_message_count:
+        limitations.append(VARIANT_UNKNOWN_LIMITATION)
+        diagnostic_reason = VARIANT_UNKNOWN_LIMITATION
+        diagnostic_details = {
+            "reason": "message_field_mapping_unconfirmed",
+            "scope": "message_entry",
+            "skipped_message_count": skipped_message_count,
+        }
+    if user_message_count == 0:
+        limitations.append(MISSING_USER_LIMITATION)
+    if assistant_message_count == 0:
+        limitations.append(MISSING_ASSISTANT_LIMITATION)
+
+    completeness = (
+        TranscriptCompleteness.COMPLETE
+        if not limitations
+        else TranscriptCompleteness.PARTIAL
+    )
+    return AntigravityTranscriptRecovery(
+        messages=tuple(messages),
+        completeness=completeness,
+        limitations=_unique_limitations(tuple(limitations)),
+        protobuf_session_id=protobuf_session_id,
+        session_started_at=next(
+            (message.timestamp for message in messages if message.timestamp is not None),
+            None,
+        ),
+        decode_status=(
+            "decoded" if completeness == TranscriptCompleteness.COMPLETE else "partially_decoded"
+        ),
+        decoded_message_count=len(messages),
+        skipped_message_count=skipped_message_count,
+        user_message_count=user_message_count,
+        assistant_message_count=assistant_message_count,
+        diagnostic_reason=diagnostic_reason,
+        diagnostic_details=diagnostic_details,
+    )
+
+
+def _decode_confirmed_message(payload: bytes) -> NormalizedMessage | None:
+    try:
+        fields = _decode_protobuf_fields(payload)
+    except ProtobufDecodeError:
+        return None
+
+    role = _decode_message_role(fields)
+    text = _first_string(fields, MESSAGE_TEXT_FIELD, strip=True)
+    if role is None or text is None:
+        return None
+
+    return NormalizedMessage(
+        role=role,
+        text=text,
+        timestamp=_first_string(fields, MESSAGE_TIMESTAMP_FIELD),
+        source_message_id=_first_string(fields, MESSAGE_ID_FIELD),
+    )
+
+
+def _decode_message_role(fields: tuple[ProtobufField, ...]) -> MessageRole | None:
+    for field in fields:
+        if field.number != MESSAGE_ROLE_FIELD:
+            continue
+        if isinstance(field.value, int):
+            return ROLE_ENUM_MAP.get(field.value)
+        if not isinstance(field.value, bytes):
+            continue
+        try:
+            decoded = field.value.decode("utf-8").strip().lower()
+        except UnicodeDecodeError:
+            continue
+        if decoded == "user":
+            return MessageRole.USER
+        if decoded == "assistant":
+            return MessageRole.ASSISTANT
+    return None
+
+
+def _decode_protobuf_fields(payload: bytes) -> tuple[ProtobufField, ...]:
+    fields: list[ProtobufField] = []
+    offset = 0
+
+    while offset < len(payload):
+        tag_offset = offset
+        tag, offset = _read_varint(payload, offset)
+        if tag <= 0:
+            raise ProtobufDecodeError(
+                "invalid protobuf tag",
+                offset=tag_offset,
+                stage="tag",
+            )
+        field_number = tag >> 3
+        wire_type = tag & 0x07
+
+        if wire_type == 0:
+            value, offset = _read_varint(payload, offset)
+        elif wire_type == 1:
+            end = offset + 8
+            if end > len(payload):
+                raise ProtobufDecodeError(
+                    "truncated protobuf 64-bit field",
+                    offset=offset,
+                    stage="field",
+                    field_number=field_number,
+                    wire_type=wire_type,
+                )
+            value = payload[offset:end]
+            offset = end
+        elif wire_type == 2:
+            size, offset = _read_varint(payload, offset)
+            end = offset + size
+            if end > len(payload):
+                raise ProtobufDecodeError(
+                    "truncated protobuf length-delimited field",
+                    offset=offset,
+                    stage="field",
+                    field_number=field_number,
+                    wire_type=wire_type,
+                )
+            value = payload[offset:end]
+            offset = end
+        elif wire_type == 5:
+            end = offset + 4
+            if end > len(payload):
+                raise ProtobufDecodeError(
+                    "truncated protobuf 32-bit field",
+                    offset=offset,
+                    stage="field",
+                    field_number=field_number,
+                    wire_type=wire_type,
+                )
+            value = payload[offset:end]
+            offset = end
+        else:
+            raise ProtobufDecodeError(
+                f"unsupported protobuf wire type {wire_type}",
+                offset=tag_offset,
+                stage="field",
+                field_number=field_number,
+                wire_type=wire_type,
+            )
+
+        fields.append(ProtobufField(number=field_number, wire_type=wire_type, value=value))
+
+    return tuple(fields)
+
+
+def _read_varint(payload: bytes, offset: int) -> tuple[int, int]:
+    start_offset = offset
+    result = 0
+    shift = 0
+
+    while True:
+        if offset >= len(payload):
+            raise ProtobufDecodeError(
+                "truncated protobuf varint",
+                offset=start_offset,
+                stage="varint",
+            )
+        byte = payload[offset]
+        offset += 1
+        result |= (byte & 0x7F) << shift
+        if byte < 0x80:
+            return result, offset
+        shift += 7
+        if shift >= 64:
+            raise ProtobufDecodeError(
+                "protobuf varint exceeds 64 bits",
+                offset=start_offset,
+                stage="varint",
+            )
+
+
+def _diagnose_top_level_decode_failure(
+    exc: ProtobufDecodeError,
+) -> tuple[str, str, dict[str, object]]:
+    diagnostic_details: dict[str, object] = {
+        "failure_offset": exc.offset,
+        "failure_stage": exc.stage,
+    }
+    if exc.field_number is not None:
+        diagnostic_details["field_number"] = exc.field_number
+    if exc.wire_type is not None:
+        diagnostic_details["wire_type"] = exc.wire_type
+
+    if exc.offset == 0 and exc.wire_type in UNKNOWN_VARIANT_WIRE_TYPES:
+        diagnostic_details["reason"] = "unknown_top_level_wire_type"
+        return (
+            VARIANT_UNKNOWN_LIMITATION,
+            (
+                "variant_unknown: top-level wire type "
+                f"{exc.wire_type} does not match the confirmed Antigravity raw "
+                "protobuf conversation variant"
+            ),
+            diagnostic_details,
+        )
+
+    diagnostic_details["reason"] = "protobuf_decode_failed"
+    return (
+        DECODE_FAILED_LIMITATION,
+        f"decode_failed: {exc}",
+        diagnostic_details,
+    )
+
+
+def _first_string(
+    fields: tuple[ProtobufField, ...],
+    field_number: int,
+    *,
+    strip: bool = False,
+) -> str | None:
+    for field in fields:
+        if field.number != field_number or not isinstance(field.value, bytes):
+            continue
+        try:
+            value = field.value.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        if strip:
+            value = value.strip()
+        if value:
+            return value
+    return None
+
+
+def _first_uuid_string(
+    fields: tuple[ProtobufField, ...],
+    field_number: int,
+) -> str | None:
+    value = _first_string(fields, field_number)
+    if value is None or not UUID_PATTERN.match(value):
+        return None
+    return value.lower()
+
+
+def _unique_limitations(limitations: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(limitations))
 
 
 def _brain_metadata(brain_dir_path: str | None) -> dict[str, object] | None:

@@ -1,0 +1,27 @@
+# This file matches `uv run llm-chat-archive config init`.
+# Set collect.archive_root to an absolute path outside this repository.
+
+[collect]
+archive_root = "/Users/chenjing/dev/chat-history"
+incremental = true
+redaction = "on"
+validation = "report"
+
+[collect.selection]
+profile = "default"
+
+[rerun]
+selection_preset = "failed_and_degraded"
+
+[scheduled]
+mode = "collect"
+incremental = true
+redaction = "on"
+validation = "report"
+stale_after_seconds = 21600
+
+[scheduled.selection]
+profile = "default"
+
+[scheduled.rerun]
+selection_preset = "failed_and_degraded"

@@ -1,0 +1,2 @@
+{"type":"session_meta","payload":{"id":"desktop-automation-archived","timestamp":"2026-03-05T07:15:00Z","source":"exec","originator":"Codex Desktop"}}
+{"type":"response_item","payload":{"type":"reasoning","id":"automation-archived-reasoning","summary":[{"type":"summary_text","text":"Reconstruct from archived inbox snapshot."}]}}

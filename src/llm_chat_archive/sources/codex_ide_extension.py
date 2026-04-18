@@ -1,15 +1,24 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from ..incremental import write_incremental_collection
 from ..models import (
     CollectionPlan,
     CollectionResult,
     IdeBridgeProvenance,
     SourceDescriptor,
+    SourceSupportMetadata,
     SupportLevel,
+    TranscriptCompleteness,
+)
+from ..source_roots import (
+    all_platform_root,
+    darwin_root,
+    default_descriptor_input_roots,
+    linux_root,
+    windows_root,
 )
 from .codex_rollout import (
     CodexSessionMetadata,
@@ -17,7 +26,6 @@ from .codex_rollout import (
     iter_rollout_paths,
     parse_codex_rollout_file,
     resolve_input_roots,
-    timestamp_slug,
     utc_timestamp,
 )
 
@@ -41,10 +49,37 @@ CODEX_IDE_EXTENSION_DESCRIPTOR = SourceDescriptor(
         "~/Library/Application Support/Cursor/logs",
         "~/Library/Application Support/com.openai.chat/app_pairing_extensions",
     ),
+    artifact_root_candidates=(
+        all_platform_root("$HOME/.codex"),
+        darwin_root("$HOME/Library/Application Support/Code/User/globalStorage"),
+        linux_root("$XDG_CONFIG_HOME/Code/User/globalStorage"),
+        windows_root("$APPDATA/Code/User/globalStorage"),
+        darwin_root("$HOME/Library/Application Support/Code/User/workspaceStorage"),
+        linux_root("$XDG_CONFIG_HOME/Code/User/workspaceStorage"),
+        windows_root("$APPDATA/Code/User/workspaceStorage"),
+        darwin_root("$HOME/Library/Application Support/Code/logs"),
+        linux_root("$XDG_CONFIG_HOME/Code/logs"),
+        windows_root("$APPDATA/Code/logs"),
+        darwin_root("$HOME/Library/Application Support/Cursor/User/workspaceStorage"),
+        linux_root("$XDG_CONFIG_HOME/Cursor/User/workspaceStorage"),
+        windows_root("$APPDATA/Cursor/User/workspaceStorage"),
+        darwin_root("$HOME/Library/Application Support/Cursor/logs"),
+        linux_root("$XDG_CONFIG_HOME/Cursor/logs"),
+        windows_root("$APPDATA/Cursor/logs"),
+        darwin_root("$HOME/Library/Application Support/com.openai.chat/app_pairing_extensions"),
+        linux_root("$XDG_CONFIG_HOME/com.openai.chat/app_pairing_extensions"),
+        windows_root("$APPDATA/com.openai.chat/app_pairing_extensions"),
+    ),
     notes=(
         "Uses shared ~/.codex rollout JSONL as the canonical transcript source.",
         'Selects only sessions whose session_meta payload originator is "codex_vscode".',
         "Treats VS Code and Cursor state.vscdb, Codex.log, and bridge payload files as provenance only.",
+    ),
+    support_metadata=SourceSupportMetadata(
+        product_label="Codex",
+        host_surface="IDE extension",
+        expected_transcript_completeness=TranscriptCompleteness.COMPLETE,
+        limitation_summary="IDE bridge residue stays provenance-only; shared rollout JSONL remains canonical.",
     ),
 )
 
@@ -72,38 +107,25 @@ class CodexIdeExtensionCollector:
         rollout_paths = tuple(iter_rollout_paths(resolved_input_roots))
         ide_bridge = discover_ide_bridge_provenance(resolved_input_roots)
         collected_at = utc_timestamp()
-        output_dir = archive_root / self.descriptor.key
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"memory_chat_v1-{timestamp_slug(collected_at)}.jsonl"
-
-        conversation_count = 0
-        message_count = 0
-        with output_path.open("w", encoding="utf-8") as handle:
-            for rollout_path in rollout_paths:
-                conversation = parse_rollout_file(
-                    rollout_path,
-                    collected_at=collected_at,
-                    ide_bridge=ide_bridge,
-                )
-                if conversation is None:
-                    continue
-                handle.write(json.dumps(conversation.to_dict(), ensure_ascii=False))
-                handle.write("\n")
-                conversation_count += 1
-                message_count += len(conversation.messages)
-
-        return CollectionResult(
+        conversations = (
+            parse_rollout_file(
+                rollout_path,
+                collected_at=collected_at,
+                ide_bridge=ide_bridge,
+            )
+            for rollout_path in rollout_paths
+        )
+        return write_incremental_collection(
             source=self.descriptor.key,
             archive_root=archive_root,
-            output_path=output_path,
             input_roots=resolved_input_roots,
             scanned_artifact_count=len(rollout_paths),
-            conversation_count=conversation_count,
-            message_count=message_count,
+            collected_at=collected_at,
+            conversations=conversations,
         )
 
     def _default_input_roots(self) -> tuple[Path, ...]:
-        return tuple(Path(root) for root in self.descriptor.default_input_roots)
+        return default_descriptor_input_roots(self.descriptor)
 
 
 def parse_rollout_file(

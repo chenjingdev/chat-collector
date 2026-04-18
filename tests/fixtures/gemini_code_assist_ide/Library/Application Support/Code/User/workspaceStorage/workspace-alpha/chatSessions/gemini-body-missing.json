@@ -1,0 +1,26 @@
+{
+  "sessionId": "gemini-body-missing",
+  "responderUsername": "Gemini Code Assist",
+  "providerId": "google.geminicodeassist",
+  "selectedModel": {
+    "metadata": {
+      "extension": {
+        "value": "google.geminicodeassist"
+      }
+    }
+  },
+  "requests": [
+    {
+      "requestId": "request-1",
+      "timestamp": "2026-03-14T10:03:00Z",
+      "message": {
+        "unsupported": true
+      },
+      "response": {
+        "updatedAt": "2026-03-14T10:03:07Z",
+        "unsupported": true
+      }
+    }
+  ],
+  "isEmpty": false
+}

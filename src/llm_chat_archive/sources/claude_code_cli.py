@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+from ..incremental import write_incremental_collection
 from ..models import (
     CollectionPlan,
     CollectionResult,
@@ -14,9 +15,12 @@ from ..models import (
     NormalizedImage,
     NormalizedMessage,
     SourceDescriptor,
+    SourceSupportMetadata,
     SupportLevel,
+    TranscriptCompleteness,
 )
-from .codex_rollout import resolve_input_roots, timestamp_slug, utc_timestamp
+from ..source_roots import all_platform_root, default_descriptor_input_roots
+from .codex_rollout import resolve_input_roots, utc_timestamp
 
 CLAUDE_CODE_CLI_DESCRIPTOR = SourceDescriptor(
     key="claude",
@@ -24,10 +28,20 @@ CLAUDE_CODE_CLI_DESCRIPTOR = SourceDescriptor(
     execution_context="cli",
     support_level=SupportLevel.COMPLETE,
     default_input_roots=("~/.claude", "~/.claude.json"),
+    artifact_root_candidates=(
+        all_platform_root("$HOME/.claude"),
+        all_platform_root("$HOME/.claude.json"),
+    ),
     notes=(
         "Scans ~/.claude/projects/<encoded-project-path>/<session-uuid>.jsonl.",
         "Keeps subagents/*.jsonl as separate traces instead of merging them into parent transcripts.",
         "Retains only human-facing user text/image content and assistant text content.",
+    ),
+    support_metadata=SourceSupportMetadata(
+        product_label="Claude Code",
+        host_surface="CLI",
+        expected_transcript_completeness=TranscriptCompleteness.COMPLETE,
+        limitation_summary="Subagent traces remain separate JSONL sessions instead of being merged into the parent.",
     ),
 )
 
@@ -106,37 +120,24 @@ class ClaudeCodeCliCollector:
         resolved_input_roots = resolve_input_roots(input_roots or self._default_input_roots())
         transcript_paths = tuple(iter_transcript_paths(resolved_input_roots))
         collected_at = utc_timestamp()
-        output_dir = archive_root / self.descriptor.key
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"memory_chat_v1-{timestamp_slug(collected_at)}.jsonl"
-
-        conversation_count = 0
-        message_count = 0
-        with output_path.open("w", encoding="utf-8") as handle:
-            for transcript_path in transcript_paths:
-                conversation = parse_transcript_file(
-                    transcript_path,
-                    collected_at=collected_at,
-                )
-                if conversation is None:
-                    continue
-                handle.write(json.dumps(conversation.to_dict(), ensure_ascii=False))
-                handle.write("\n")
-                conversation_count += 1
-                message_count += len(conversation.messages)
-
-        return CollectionResult(
+        conversations = (
+            parse_transcript_file(
+                transcript_path,
+                collected_at=collected_at,
+            )
+            for transcript_path in transcript_paths
+        )
+        return write_incremental_collection(
             source=self.descriptor.key,
             archive_root=archive_root,
-            output_path=output_path,
             input_roots=resolved_input_roots,
             scanned_artifact_count=len(transcript_paths),
-            conversation_count=conversation_count,
-            message_count=message_count,
+            collected_at=collected_at,
+            conversations=conversations,
         )
 
     def _default_input_roots(self) -> tuple[Path, ...]:
-        return tuple(Path(root) for root in self.descriptor.default_input_roots)
+        return default_descriptor_input_roots(self.descriptor)
 
 
 def iter_transcript_paths(input_roots: Iterable[Path]) -> Iterable[Path]:

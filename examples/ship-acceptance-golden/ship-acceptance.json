@@ -1,0 +1,173 @@
+{
+  "archive_digest": {
+    "error_count": 0,
+    "status": "warning",
+    "suspicious_conversation_count": 55,
+    "suspicious_source_count": 4,
+    "warning_count": 53
+  },
+  "archive_export": {
+    "conversation_count": 1253,
+    "message_count": 35428,
+    "output_dir": "/Users/chenjing/dev/chat-history/che-144-ship-acceptance-20260320-074859/acceptance/archive-export",
+    "source_count": 7
+  },
+  "archive_root": "/Users/chenjing/dev/chat-history/che-144-ship-acceptance-20260320-074859",
+  "archive_verify": {
+    "bad_row_count": 0,
+    "error_count": 0,
+    "orphan_file_count": 0,
+    "status": "warning",
+    "warning_count": 53
+  },
+  "artifacts": {
+    "archive_export_dir": "/Users/chenjing/dev/chat-history/che-144-ship-acceptance-20260320-074859/acceptance/archive-export",
+    "memory_export_dir": "/Users/chenjing/dev/chat-history/che-144-ship-acceptance-20260320-074859/acceptance/memory-export",
+    "snapshot_path": "/Users/chenjing/dev/chat-collector/examples/ship-acceptance-golden/ship-acceptance.json"
+  },
+  "blocking_findings": [],
+  "memory_export": {
+    "conversation_count": 1253,
+    "message_count": 35428,
+    "output_dir": "/Users/chenjing/dev/chat-history/che-144-ship-acceptance-20260320-074859/acceptance/memory-export",
+    "record_count": 1253,
+    "source_count": 7
+  },
+  "profile": {
+    "allowed_degraded_sources": [
+      "antigravity_editor_view",
+      "cursor",
+      "cursor_editor"
+    ],
+    "name": "ship_acceptance",
+    "release_blocking_sources": [
+      "claude",
+      "codex_app",
+      "codex_cli",
+      "codex_ide_extension"
+    ],
+    "selected_sources": [
+      "antigravity_editor_view",
+      "claude",
+      "codex_app",
+      "codex_cli",
+      "codex_ide_extension",
+      "cursor",
+      "cursor_editor"
+    ]
+  },
+  "run": {
+    "completed_at": "2026-03-19T22:50:16Z",
+    "conversation_count": 1448,
+    "manifest_path": "/Users/chenjing/dev/chat-history/che-144-ship-acceptance-20260320-074859/runs/20260319T224859Z/manifest.json",
+    "message_count": 35428,
+    "redaction_event_count": 453,
+    "run_dir": "/Users/chenjing/dev/chat-history/che-144-ship-acceptance-20260320-074859/runs/20260319T224859Z",
+    "run_id": "20260319T224859Z",
+    "scanned_artifact_count": 3069,
+    "source_count": 7,
+    "started_at": "2026-03-19T22:48:59Z",
+    "written_conversation_count": 1253
+  },
+  "schema_version": "2026-03-20",
+  "sources": [
+    {
+      "attention_required": true,
+      "conversation_count": 42,
+      "expectation": "allowed_degraded",
+      "message_count": 0,
+      "observed_status": "unsupported",
+      "passes_expectation": true,
+      "scanned_artifact_count": 42,
+      "source": "antigravity_editor_view",
+      "support_level": "partial",
+      "verify_status": "warning",
+      "written_conversation_count": 42
+    },
+    {
+      "attention_required": false,
+      "conversation_count": 22,
+      "expectation": "release_blocking",
+      "message_count": 271,
+      "observed_status": "complete",
+      "passes_expectation": true,
+      "scanned_artifact_count": 22,
+      "source": "claude",
+      "support_level": "complete",
+      "verify_status": "success",
+      "written_conversation_count": 22
+    },
+    {
+      "attention_required": false,
+      "conversation_count": 313,
+      "expectation": "release_blocking",
+      "message_count": 10408,
+      "observed_status": "complete",
+      "passes_expectation": true,
+      "scanned_artifact_count": 988,
+      "source": "codex_app",
+      "support_level": "complete",
+      "verify_status": "success",
+      "written_conversation_count": 229
+    },
+    {
+      "attention_required": true,
+      "conversation_count": 976,
+      "expectation": "release_blocking",
+      "message_count": 22916,
+      "observed_status": "complete",
+      "passes_expectation": true,
+      "scanned_artifact_count": 988,
+      "source": "codex_cli",
+      "support_level": "complete",
+      "verify_status": "success",
+      "written_conversation_count": 865
+    },
+    {
+      "attention_required": false,
+      "conversation_count": 75,
+      "expectation": "release_blocking",
+      "message_count": 1578,
+      "observed_status": "complete",
+      "passes_expectation": true,
+      "scanned_artifact_count": 988,
+      "source": "codex_ide_extension",
+      "support_level": "complete",
+      "verify_status": "success",
+      "written_conversation_count": 75
+    },
+    {
+      "attention_required": true,
+      "conversation_count": 6,
+      "expectation": "allowed_degraded",
+      "message_count": 0,
+      "observed_status": "unsupported",
+      "passes_expectation": true,
+      "scanned_artifact_count": 6,
+      "source": "cursor",
+      "support_level": "partial",
+      "verify_status": "warning",
+      "written_conversation_count": 6
+    },
+    {
+      "attention_required": true,
+      "conversation_count": 14,
+      "expectation": "allowed_degraded",
+      "message_count": 255,
+      "observed_status": "partial",
+      "passes_expectation": true,
+      "scanned_artifact_count": 35,
+      "source": "cursor_editor",
+      "support_level": "partial",
+      "verify_status": "warning",
+      "written_conversation_count": 14
+    }
+  ],
+  "status": "pass",
+  "validation": {
+    "error_count": 0,
+    "status": "warning",
+    "success_count": 5,
+    "warning_count": 61
+  }
+}

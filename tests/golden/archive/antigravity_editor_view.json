@@ -1,0 +1,287 @@
+{
+  "case": "antigravity_editor_view",
+  "descriptor": {
+    "display_name": "Antigravity Editor View",
+    "execution_context": "ide_native",
+    "support_level": "partial",
+    "support_metadata": {
+      "expected_transcript_completeness": "partial",
+      "host_surface": "Editor view",
+      "limitation_summary": "Only the confirmed raw Antigravity conversation protobuf variant is promoted to transcript rows; current operator-local opaque blobs degrade to explicit variant_unknown or decode_failed diagnostics instead of false-complete output.",
+      "limitations": [
+        "Only the verified raw conversation protobuf field mapping is promoted to complete transcript rows.",
+        "Opaque or drifted conversation blobs surface explicit variant_unknown or decode_failed diagnostics and remain partial or unsupported until a new framing is confirmed."
+      ],
+      "product_label": "Antigravity"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Antigravity",
+    "build_markers": [
+      "annotation_version=4",
+      "chat_session_store_index_version=1"
+    ]
+  },
+  "fixture_subpath": "antigravity_editor_view",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 2,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 0,
+    "output_path": "<ARCHIVE_ROOT>/antigravity_editor_view/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 2,
+    "skipped_conversation_count": 0,
+    "source": "antigravity_editor_view",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 2
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "variant_unknown",
+        "decode_failed",
+        "metadata_only_session_family"
+      ],
+      "messages": [],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Antigravity"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.gemini/antigravity/html_artifacts"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/.gemini/antigravity/daemon/ls_c318d4f90fc5aacc.log"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Antigravity/logs"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Antigravity/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Antigravity/User/workspaceStorage/workspace-alpha/state.vscdb"
+          ]
+        },
+        "cwd": "<REPO_ROOT>",
+        "originator": "antigravity_editor_view",
+        "source": "antigravity"
+      },
+      "session_metadata": {
+        "annotation": {
+          "fields": {
+            "annotation_version": 4,
+            "last_user_view_time": "2026-03-14T10:08:00Z"
+          },
+          "path": "<FIXTURE_ROOT>/.gemini/antigravity/annotations/11111111-1111-4111-8111-111111111111.pbtxt"
+        },
+        "brain": {
+          "artifact_names": [
+            "implementation_plan.md",
+            "task.md",
+            "walkthrough.md"
+          ],
+          "artifact_summaries": [
+            {
+              "artifact_type": "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+              "has_summary": true,
+              "name": "implementation_plan.md",
+              "updated_at": "2026-03-14T10:06:00Z",
+              "version": 2
+            },
+            {
+              "artifact_type": "ARTIFACT_TYPE_TASK",
+              "has_summary": true,
+              "name": "task.md",
+              "updated_at": "2026-03-14T10:05:00Z",
+              "version": 1
+            },
+            {
+              "artifact_type": "ARTIFACT_TYPE_WALKTHROUGH",
+              "name": "walkthrough.md",
+              "updated_at": "2026-03-14T10:07:00Z",
+              "version": 3
+            }
+          ],
+          "image_artifact_count": 1,
+          "path": "<FIXTURE_ROOT>/.gemini/antigravity/brain/11111111-1111-4111-8111-111111111111",
+          "resolved_artifact_count": 2
+        },
+        "browser_recording": {
+          "frame_count": 2,
+          "path": "<FIXTURE_ROOT>/.gemini/antigravity/browser_recordings/11111111-1111-4111-8111-111111111111"
+        },
+        "conversation_blob": {
+          "decode_error": "variant_unknown: top-level wire type 7 does not match the confirmed Antigravity raw protobuf conversation variant",
+          "decode_status": "decode_failed",
+          "diagnostic_details": {
+            "failure_offset": 0,
+            "failure_stage": "field",
+            "field_number": 9,
+            "reason": "unknown_top_level_wire_type",
+            "wire_type": 7
+          },
+          "diagnostic_reason": "variant_unknown",
+          "path": "<FIXTURE_ROOT>/.gemini/antigravity/conversations/11111111-1111-4111-8111-111111111111.pb",
+          "size_bytes": 49
+        },
+        "noise_separation": {
+          "daemon_artifact_count": 1,
+          "excluded_from_messages": [
+            "browser_recordings",
+            "html_artifacts",
+            "daemon_logs",
+            "unified_state_sync_blobs"
+          ],
+          "html_artifact_root_count": 1
+        },
+        "shared_state": {
+          "global_state": [
+            {
+              "matched_keys": [
+                "antigravityUnifiedStateSync.artifactReview",
+                "antigravityUnifiedStateSync.trajectorySummaries"
+              ],
+              "state_db_path": "<FIXTURE_ROOT>/Library/Application Support/Antigravity/User/globalStorage/state.vscdb"
+            }
+          ],
+          "workspace_state": [
+            {
+              "chat_session_store_entry_count": 0,
+              "chat_session_store_index_version": 1,
+              "matched_keys": [
+                "memento/antigravity.jetskiArtifactsEditor"
+              ],
+              "state_db_path": "<FIXTURE_ROOT>/Library/Application Support/Antigravity/User/workspaceStorage/workspace-alpha/state.vscdb",
+              "workspace_folder": "<REPO_ROOT>",
+              "workspace_id": "workspace-alpha"
+            }
+          ]
+        }
+      },
+      "source": "antigravity_editor_view",
+      "source_artifact_path": "<FIXTURE_ROOT>/.gemini/antigravity/conversations/11111111-1111-4111-8111-111111111111.pb",
+      "source_session_id": "11111111-1111-4111-8111-111111111111",
+      "transcript_completeness": "unsupported"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "variant_unknown",
+        "decode_failed",
+        "metadata_only_session_family"
+      ],
+      "messages": [],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Antigravity"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.gemini/antigravity/html_artifacts"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/.gemini/antigravity/daemon/ls_c318d4f90fc5aacc.log"
+          ],
+          "log_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Antigravity/logs"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Antigravity/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Antigravity/User/workspaceStorage/workspace-alpha/state.vscdb"
+          ]
+        },
+        "originator": "antigravity_editor_view",
+        "source": "antigravity"
+      },
+      "session_metadata": {
+        "conversation_blob": {
+          "decode_error": "variant_unknown: top-level wire type 3 does not match the confirmed Antigravity raw protobuf conversation variant",
+          "decode_status": "decode_failed",
+          "diagnostic_details": {
+            "failure_offset": 0,
+            "failure_stage": "field",
+            "field_number": 10,
+            "reason": "unknown_top_level_wire_type",
+            "wire_type": 3
+          },
+          "diagnostic_reason": "variant_unknown",
+          "path": "<FIXTURE_ROOT>/.gemini/antigravity/conversations/22222222-2222-4222-8222-222222222222.pb",
+          "size_bytes": 56
+        },
+        "noise_separation": {
+          "daemon_artifact_count": 1,
+          "excluded_from_messages": [
+            "browser_recordings",
+            "html_artifacts",
+            "daemon_logs",
+            "unified_state_sync_blobs"
+          ],
+          "html_artifact_root_count": 1
+        },
+        "shared_state": {
+          "global_state": [
+            {
+              "matched_keys": [],
+              "state_db_path": "<FIXTURE_ROOT>/Library/Application Support/Antigravity/User/globalStorage/state.vscdb"
+            }
+          ],
+          "workspace_state": [
+            {
+              "chat_session_store_entry_count": 0,
+              "chat_session_store_index_version": 1,
+              "matched_keys": [],
+              "state_db_path": "<FIXTURE_ROOT>/Library/Application Support/Antigravity/User/workspaceStorage/workspace-alpha/state.vscdb",
+              "workspace_folder": "<REPO_ROOT>",
+              "workspace_id": "workspace-alpha"
+            }
+          ]
+        }
+      },
+      "source": "antigravity_editor_view",
+      "source_artifact_path": "<FIXTURE_ROOT>/.gemini/antigravity/conversations/22222222-2222-4222-8222-222222222222.pb",
+      "source_session_id": "22222222-2222-4222-8222-222222222222",
+      "transcript_completeness": "unsupported"
+    }
+  ],
+  "source": "antigravity_editor_view"
+}

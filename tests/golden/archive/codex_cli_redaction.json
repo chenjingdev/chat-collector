@@ -1,0 +1,88 @@
+{
+  "case": "codex_cli_redaction",
+  "descriptor": {
+    "display_name": "Codex CLI",
+    "execution_context": "cli",
+    "support_level": "complete",
+    "support_metadata": {
+      "expected_transcript_completeness": "complete",
+      "host_surface": "CLI",
+      "limitation_summary": "Filters event, reasoning, tool, and search noise out of the transcript.",
+      "product_label": "Codex"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Codex CLI",
+    "version_markers": [
+      "0.32.0"
+    ]
+  },
+  "fixture_subpath": "redaction/codex_cli",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 1,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 3,
+    "output_path": "<ARCHIVE_ROOT>/codex_cli/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 6,
+    "scanned_artifact_count": 1,
+    "skipped_conversation_count": 0,
+    "source": "codex_cli",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 1
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "messages": [
+        {
+          "role": "developer",
+          "source_message_id": "msg-dev-redaction",
+          "text": "Keep Authorization: Bearer [REDACTED] out of the archive."
+        },
+        {
+          "role": "user",
+          "source_message_id": "msg-user-redaction",
+          "text": "Keys to mask: [REDACTED_API_KEY] and [REDACTED_API_KEY]."
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "msg-assistant-redaction",
+          "text": "Credential JSON: {\"access_token\":\"[REDACTED]\",\"refresh_token\":\"[REDACTED]\",\"api_key\":\"[REDACTED]\"}"
+        }
+      ],
+      "provenance": {
+        "archived": false,
+        "cli_version": "0.32.0",
+        "cwd": "<REPO_ROOT>",
+        "originator": "codex_cli_rs",
+        "session_started_at": "2026-03-19T09:00:00Z",
+        "source": "cli"
+      },
+      "source": "codex_cli",
+      "source_artifact_path": "<FIXTURE_ROOT>/sessions/2026/03/19/rollout-20260319T090000-redaction.jsonl",
+      "source_session_id": "session-redaction"
+    }
+  ],
+  "source": "codex_cli"
+}

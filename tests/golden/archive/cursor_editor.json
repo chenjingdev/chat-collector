@@ -1,0 +1,439 @@
+{
+  "case": "cursor_editor",
+  "descriptor": {
+    "display_name": "Cursor Editor",
+    "execution_context": "ide_native",
+    "support_level": "partial",
+    "support_metadata": {
+      "expected_transcript_completeness": "partial",
+      "host_surface": "Editor",
+      "limitation_summary": "Cursor editor recovery restores known explicit cursorDiskKV bubble body variants, but sessions whose headers resolve only to empty or tool-only rows remain partial and opt-in for unattended batches.",
+      "limitations": [
+        "Composer sessions whose cursorDiskKV headers resolve only to empty or tool-only bubble rows still degrade to partial output, with missing bubble ids retained in session metadata.",
+        "Cursor host logs, memory flags, and third-party extension state never promote a session without confirmed transcript rows."
+      ],
+      "product_label": "Cursor"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Cursor Editor"
+  },
+  "fixture_subpath": "cursor_editor",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 4,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 8,
+    "output_path": "<ARCHIVE_ROOT>/cursor_editor/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 5,
+    "skipped_conversation_count": 0,
+    "source": "cursor_editor",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 4
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "messages": [
+        {
+          "provenance": {
+            "body_source": "cursor_disk_kv.text"
+          },
+          "role": "user",
+          "source_message_id": "alpha-user-1",
+          "text": "Implement the Cursor editor collector."
+        },
+        {
+          "provenance": {
+            "body_source": "cursor_disk_kv.text"
+          },
+          "role": "assistant",
+          "source_message_id": "alpha-assistant-1",
+          "text": "Use workspace state.vscdb for composer metadata and global cursorDiskKV bubble rows for explicit transcript recovery.",
+          "timestamp": "2026-03-14T10:00:02Z"
+        },
+        {
+          "provenance": {
+            "body_source": "cursor_disk_kv.text"
+          },
+          "role": "user",
+          "source_message_id": "alpha-user-2",
+          "text": "Do not classify Codex extension state as Cursor-native transcript."
+        },
+        {
+          "provenance": {
+            "body_source": "cursor_disk_kv.text"
+          },
+          "role": "assistant",
+          "source_message_id": "alpha-assistant-2",
+          "text": "Codex extension state stays provenance only, so the normalized transcript keeps only user and assistant message bodies.",
+          "timestamp": "2026-03-14T10:01:05Z"
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.cursor/ai-tracking/ai-code-tracking.db"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/.cursor"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T100500/window1/output_20260314T100550/cursor.hooks.log"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-alpha/state.vscdb"
+          ]
+        },
+        "archived": false,
+        "cwd": "<REPO_ROOT>",
+        "originator": "cursor_editor",
+        "session_started_at": "2026-03-14T10:00:00Z",
+        "source": "cursor"
+      },
+      "session_metadata": {
+        "composer_id": "composer-alpha",
+        "composer_name": "Cursor editor collector",
+        "composer_subtitle": "Native metadata only",
+        "context_usage_percent": 37,
+        "created_at": "2026-03-14T10:00:00Z",
+        "generation_count": 2,
+        "hook_session_end_count": 1,
+        "ignored_state_keys": [
+          "memento/webviewView.chatgpt.sidebarView",
+          "openai.chatgpt"
+        ],
+        "is_archived": false,
+        "is_spec": false,
+        "is_worktree": false,
+        "last_focused": true,
+        "last_updated_at": "2026-03-14T10:02:00Z",
+        "memory_enabled": true,
+        "mode": "agent",
+        "pending_memories_count": 0,
+        "prompt_count": 2,
+        "reconstructed_message_count": 4,
+        "selected": true,
+        "skipped_tool_bubble_count": 1,
+        "skipped_tool_bubble_ids": [
+          "alpha-tool-1"
+        ],
+        "transcript_header_count": 5,
+        "transcript_source": "cursor_disk_kv",
+        "workspace_folder": "<REPO_ROOT>",
+        "workspace_id": "workspace-alpha"
+      },
+      "source": "cursor_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-alpha/state.vscdb",
+      "source_session_id": "composer-alpha"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "messages": [
+        {
+          "provenance": {
+            "body_source": "cursor_disk_kv.body.text"
+          },
+          "role": "user",
+          "source_message_id": "delta-user-1",
+          "text": "Recover explicit body keys beyond text."
+        },
+        {
+          "provenance": {
+            "body_source": "cursor_disk_kv.markdown"
+          },
+          "role": "assistant",
+          "source_message_id": "delta-assistant-1",
+          "text": "Nested markdown body is explicit enough for recovery.",
+          "timestamp": "2026-03-14T12:30:04Z"
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.cursor/ai-tracking/ai-code-tracking.db"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/.cursor"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T100500/window1/output_20260314T100550/cursor.hooks.log"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-delta/state.vscdb"
+          ]
+        },
+        "archived": false,
+        "cwd": "<REPO_ROOT>/CHE-150",
+        "originator": "cursor_editor",
+        "session_started_at": "2026-03-14T12:30:00Z",
+        "source": "cursor"
+      },
+      "session_metadata": {
+        "composer_id": "composer-delta",
+        "composer_name": "Cursor editor nested bodies",
+        "composer_subtitle": "Nested cursorDiskKV body keys",
+        "context_usage_percent": 21,
+        "created_at": "2026-03-14T12:30:00Z",
+        "generation_count": 1,
+        "hook_session_end_count": 1,
+        "ignored_state_keys": [
+          "openai.chatgpt"
+        ],
+        "is_archived": false,
+        "is_spec": false,
+        "is_worktree": false,
+        "last_focused": true,
+        "last_updated_at": "2026-03-14T12:31:00Z",
+        "memory_enabled": true,
+        "mode": "agent",
+        "pending_memories_count": 0,
+        "prompt_count": 1,
+        "reconstructed_message_count": 2,
+        "selected": true,
+        "transcript_header_count": 2,
+        "transcript_source": "cursor_disk_kv",
+        "workspace_folder": "<REPO_ROOT>/CHE-150",
+        "workspace_id": "workspace-delta"
+      },
+      "source": "cursor_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-delta/state.vscdb",
+      "source_session_id": "composer-delta"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "assistant_body_unverified"
+      ],
+      "messages": [
+        {
+          "provenance": {
+            "body_source": "cursor_disk_kv.text"
+          },
+          "role": "user",
+          "source_message_id": "epsilon-user-1",
+          "text": "Keep tool-only assistant bubbles out of transcript text."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.cursor/ai-tracking/ai-code-tracking.db"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/.cursor"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T100500/window1/output_20260314T100550/cursor.hooks.log"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-epsilon/state.vscdb"
+          ]
+        },
+        "archived": false,
+        "cwd": "/Users/chenjing/dev/chat-history",
+        "originator": "cursor_editor",
+        "session_started_at": "2026-03-14T13:00:00Z",
+        "source": "cursor"
+      },
+      "session_metadata": {
+        "composer_id": "composer-epsilon",
+        "composer_name": "Cursor editor tool-only assistant",
+        "composer_subtitle": "Tool-only bubble remains partial",
+        "context_usage_percent": 9,
+        "created_at": "2026-03-14T13:00:00Z",
+        "generation_count": 1,
+        "hook_session_end_count": 1,
+        "ignored_state_keys": [
+          "openai.chatgpt"
+        ],
+        "is_archived": false,
+        "is_spec": false,
+        "is_worktree": false,
+        "last_focused": true,
+        "last_updated_at": "2026-03-14T13:00:30Z",
+        "memory_enabled": true,
+        "mode": "agent",
+        "pending_memories_count": 0,
+        "prompt_count": 1,
+        "reconstructed_message_count": 1,
+        "selected": true,
+        "skipped_tool_bubble_count": 1,
+        "skipped_tool_bubble_ids": [
+          "epsilon-tool-1"
+        ],
+        "transcript_header_count": 2,
+        "transcript_source": "cursor_disk_kv",
+        "workspace_folder": "/Users/chenjing/dev/chat-history",
+        "workspace_id": "workspace-epsilon"
+      },
+      "source": "cursor_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-epsilon/state.vscdb",
+      "source_session_id": "composer-epsilon",
+      "transcript_completeness": "partial"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "ide_native",
+      "limitations": [
+        "assistant_body_missing_from_cursor_disk_kv"
+      ],
+      "messages": [
+        {
+          "provenance": {
+            "body_source": "cursor_disk_kv.text"
+          },
+          "role": "user",
+          "source_message_id": "gamma-user-1",
+          "text": "Keep this session partial when assistant body is missing."
+        }
+      ],
+      "provenance": {
+        "app_shell": {
+          "application_support_roots": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor"
+          ],
+          "auxiliary_paths": [
+            "<FIXTURE_ROOT>/.cursor/ai-tracking/ai-code-tracking.db"
+          ],
+          "cache_roots": [
+            "<FIXTURE_ROOT>/.cursor"
+          ],
+          "log_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/logs/20260314T100500/window1/output_20260314T100550/cursor.hooks.log"
+          ],
+          "state_db_paths": [
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/globalStorage/state.vscdb",
+            "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-gamma/state.vscdb"
+          ]
+        },
+        "archived": false,
+        "cwd": "/Users/chenjing/dev/chat-history",
+        "originator": "cursor_editor",
+        "session_started_at": "2026-03-14T12:00:00Z",
+        "source": "cursor"
+      },
+      "session_metadata": {
+        "composer_id": "composer-gamma",
+        "composer_name": "Cursor editor degraded transcript",
+        "composer_subtitle": "Assistant body missing",
+        "context_usage_percent": 12,
+        "created_at": "2026-03-14T12:00:00Z",
+        "generation_count": 1,
+        "hook_session_end_count": 1,
+        "ignored_state_keys": [
+          "openai.chatgpt"
+        ],
+        "is_archived": false,
+        "is_spec": false,
+        "is_worktree": false,
+        "last_focused": true,
+        "last_updated_at": "2026-03-14T12:01:00Z",
+        "memory_enabled": true,
+        "missing_assistant_bubble_ids": [
+          "gamma-assistant-1"
+        ],
+        "mode": "agent",
+        "pending_memories_count": 0,
+        "prompt_count": 1,
+        "reconstructed_message_count": 1,
+        "selected": true,
+        "transcript_header_count": 2,
+        "transcript_source": "cursor_disk_kv",
+        "workspace_folder": "/Users/chenjing/dev/chat-history",
+        "workspace_id": "workspace-gamma"
+      },
+      "source": "cursor_editor",
+      "source_artifact_path": "<FIXTURE_ROOT>/Library/Application Support/Cursor/User/workspaceStorage/workspace-gamma/state.vscdb",
+      "source_session_id": "composer-gamma",
+      "transcript_completeness": "partial"
+    }
+  ],
+  "source": "cursor_editor"
+}

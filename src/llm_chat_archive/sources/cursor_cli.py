@@ -8,17 +8,28 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import unquote, urlparse
 
+from ..incremental import write_incremental_collection
 from ..models import (
     AppShellProvenance,
     CollectionPlan,
     CollectionResult,
     ConversationProvenance,
+    MessageRole,
     NormalizedConversation,
+    NormalizedMessage,
     SourceDescriptor,
+    SourceSupportMetadata,
     SupportLevel,
     TranscriptCompleteness,
 )
-from .codex_rollout import resolve_input_roots, timestamp_slug, utc_timestamp
+from ..source_roots import (
+    all_platform_root,
+    darwin_root,
+    default_descriptor_input_roots,
+    linux_root,
+    windows_root,
+)
+from .codex_rollout import resolve_input_roots, utc_timestamp
 
 CURSOR_CLI_DESCRIPTOR = SourceDescriptor(
     key="cursor",
@@ -29,10 +40,27 @@ CURSOR_CLI_DESCRIPTOR = SourceDescriptor(
         "~/.cursor",
         "~/Library/Application Support/Cursor",
     ),
+    artifact_root_candidates=(
+        all_platform_root("$HOME/.cursor"),
+        darwin_root("$HOME/Library/Application Support/Cursor"),
+        linux_root("$XDG_CONFIG_HOME/Cursor"),
+        windows_root("$APPDATA/Cursor"),
+    ),
     notes=(
         "Anchors collection on ~/Library/Application Support/Cursor/logs/<timestamp>/cli.log invocation metadata.",
-        "Treats aiService.prompts and aiService.generations as partial workspace evidence only, not as a confirmed CLI transcript.",
+        "Reconstructs transcript messages only when a CLI invocation can be uniquely attributed to shared workspace prompt metadata plus explicit cursorDiskKV bubble rows.",
+        "Keeps aiService.prompts and aiService.generations as metadata-only workspace evidence when transcript body rows cannot be confirmed for a specific invocation.",
         "Keeps mcp.json, bridge sidecars, cli-config.json, ide_state.json, and workspace state paths in provenance or session metadata only.",
+    ),
+    support_metadata=SourceSupportMetadata(
+        product_label="Cursor",
+        host_surface="CLI",
+        expected_transcript_completeness=TranscriptCompleteness.PARTIAL,
+        limitation_summary="Cursor CLI still depends on shared editor transcript rows plus unique invocation attribution, so it remains partial and opt-in for unattended batches.",
+        limitations=(
+            "CLI invocations are promoted only when shared cursorDiskKV transcript rows can be uniquely attributed to a specific invocation.",
+            "cli.log and workspace prompt caches alone remain partial or unsupported evidence.",
+        ),
     ),
 )
 
@@ -42,18 +70,22 @@ BRIDGE_METADATA_GLOB = "**/.cursor/projects/*/mcps/*/SERVER_METADATA.json"
 CLI_CONFIG_GLOB = "**/cli-config.json"
 CLI_LOG_GLOB = "**/cli.log"
 CURSOR_ROOT_GLOB = "**/.cursor"
+GLOBAL_STATE_GLOB = "**/User/globalStorage/state.vscdb"
 IDE_STATE_GLOB = "**/ide_state.json"
 MCP_CONFIG_GLOB = "**/mcp.json"
 WORKSPACE_STATE_GLOB = "**/User/workspaceStorage/*/state.vscdb"
-EVIDENCE_MATCH_WINDOW_SECONDS = 10 * 60
+PROMPT_EVIDENCE_MATCH_WINDOW_SECONDS = 10 * 60
+TRANSCRIPT_ATTRIBUTION_PADDING_SECONDS = 2 * 60
 PARTIAL_LIMITATIONS = (
-    "no_confirmed_cursor_cli_transcript_store",
-    "workspace_prompt_evidence_attributed_by_time_proximity",
+    "cursor_cli_transcript_not_confirmed",
+    "workspace_prompt_cache_only",
 )
 UNSUPPORTED_LIMITATIONS = (
-    "no_confirmed_cursor_cli_transcript_store",
+    "cursor_cli_transcript_not_confirmed",
     "metadata_only_cli_invocation",
 )
+MISSING_ASSISTANT_LIMITATION = "assistant_body_missing_from_cursor_disk_kv"
+MISSING_USER_LIMITATION = "user_body_missing_from_cursor_disk_kv"
 CLI_LOG_RELEVANT_KEYS = frozenset(
     {
         "argv",
@@ -84,28 +116,45 @@ class CursorBridgeServer:
 
 
 @dataclass(frozen=True, slots=True)
-class CursorWorkspacePromptEvidence:
+class CursorCliTranscriptRecovery:
+    messages: tuple[NormalizedMessage, ...]
+    completeness: TranscriptCompleteness
+    limitations: tuple[str, ...]
+    source_name: str
+    source_path: str | None = None
+    header_count: int = 0
+    assistant_message_count: int = 0
+    skipped_tool_bubble_count: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class CursorCliWorkspaceSession:
     workspace_id: str
     composer_id: str
     prompt_count: int
     generation_count: int
     partial_prompt_texts: tuple[str, ...]
-    source_artifact_path: str
+    workspace_state_path: str
     activity_at: str | None = None
     workspace_folder: str | None = None
     composer_name: str | None = None
     composer_subtitle: str | None = None
     created_at: str | None = None
     last_updated_at: str | None = None
+    selected: bool = False
+    last_focused: bool = False
+    prompt_overlap_count: int = 0
+    transcript: CursorCliTranscriptRecovery | None = None
 
-    def to_dict(self) -> dict[str, object]:
+    def to_prompt_evidence_dict(self, *, match_strategy: str) -> dict[str, object]:
         payload: dict[str, object] = {
+            "match_strategy": match_strategy,
             "workspace_id": self.workspace_id,
             "composer_id": self.composer_id,
             "prompt_count": self.prompt_count,
             "generation_count": self.generation_count,
             "partial_prompt_texts": list(self.partial_prompt_texts),
-            "source_artifact_path": self.source_artifact_path,
+            "source_artifact_path": self.workspace_state_path,
         }
         if self.workspace_folder is not None:
             payload["workspace_folder"] = self.workspace_folder
@@ -119,6 +168,27 @@ class CursorWorkspacePromptEvidence:
             payload["last_updated_at"] = self.last_updated_at
         if self.activity_at is not None:
             payload["activity_at"] = self.activity_at
+        if self.selected:
+            payload["selected"] = True
+        if self.last_focused:
+            payload["last_focused"] = True
+        return payload
+
+    def to_transcript_attribution_dict(self) -> dict[str, object]:
+        payload = self.to_prompt_evidence_dict(
+            match_strategy="prompt_overlap_plus_time_window"
+        )
+        payload["prompt_overlap_count"] = self.prompt_overlap_count
+        if self.transcript is not None:
+            payload["transcript_source"] = self.transcript.source_name
+            payload["transcript_header_count"] = self.transcript.header_count
+            payload["assistant_message_count"] = self.transcript.assistant_message_count
+            if self.transcript.skipped_tool_bubble_count:
+                payload["skipped_tool_bubble_count"] = (
+                    self.transcript.skipped_tool_bubble_count
+                )
+            if self.transcript.source_path is not None:
+                payload["transcript_artifact_path"] = self.transcript.source_path
         return payload
 
 
@@ -162,6 +232,7 @@ class CursorCliArtifacts:
     cursor_root_paths: tuple[str, ...] = ()
     application_support_roots: tuple[str, ...] = ()
     cli_config_paths: tuple[str, ...] = ()
+    global_state_paths: tuple[str, ...] = ()
     ide_state_paths: tuple[str, ...] = ()
     mcp_config_paths: tuple[str, ...] = ()
     bridge_metadata_paths: tuple[str, ...] = ()
@@ -171,7 +242,7 @@ class CursorCliArtifacts:
     cli_config: dict[str, object] | None = None
     recent_file_paths: tuple[str, ...] = ()
     bridge_servers: tuple[CursorBridgeServer, ...] = ()
-    workspace_evidence: tuple[CursorWorkspacePromptEvidence, ...] = ()
+    workspace_sessions: tuple[CursorCliWorkspaceSession, ...] = ()
 
     def build_app_shell(self, *, log_path: str) -> AppShellProvenance | None:
         log_roots = tuple(
@@ -186,7 +257,9 @@ class CursorCliArtifacts:
         provenance = AppShellProvenance(
             application_support_roots=self.application_support_roots,
             log_roots=log_roots,
-            state_db_paths=self.workspace_state_paths,
+            state_db_paths=tuple(
+                sorted({*self.global_state_paths, *self.workspace_state_paths})
+            ),
             log_paths=(log_path,),
             preference_paths=tuple(
                 sorted({*self.cli_config_paths, *self.ide_state_paths})
@@ -230,38 +303,25 @@ class CursorCliCollector:
         artifacts = discover_cursor_cli_artifacts(resolved_input_roots)
         cli_log_paths = tuple(iter_cli_log_paths(resolved_input_roots))
         collected_at = utc_timestamp()
-        output_dir = archive_root / self.descriptor.key
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"memory_chat_v1-{timestamp_slug(collected_at)}.jsonl"
-
-        conversation_count = 0
-        message_count = 0
-        with output_path.open("w", encoding="utf-8") as handle:
-            for cli_log_path in cli_log_paths:
-                conversation = parse_cli_log(
-                    cli_log_path,
-                    collected_at=collected_at,
-                    artifacts=artifacts,
-                )
-                if conversation is None:
-                    continue
-                handle.write(json.dumps(conversation.to_dict(), ensure_ascii=False))
-                handle.write("\n")
-                conversation_count += 1
-                message_count += len(conversation.messages)
-
-        return CollectionResult(
+        conversations = (
+            parse_cli_log(
+                cli_log_path,
+                collected_at=collected_at,
+                artifacts=artifacts,
+            )
+            for cli_log_path in cli_log_paths
+        )
+        return write_incremental_collection(
             source=self.descriptor.key,
             archive_root=archive_root,
-            output_path=output_path,
             input_roots=resolved_input_roots,
             scanned_artifact_count=len(cli_log_paths),
-            conversation_count=conversation_count,
-            message_count=message_count,
+            collected_at=collected_at,
+            conversations=conversations,
         )
 
     def _default_input_roots(self) -> tuple[Path, ...]:
-        return tuple(Path(root) for root in self.descriptor.default_input_roots)
+        return default_descriptor_input_roots(self.descriptor)
 
 
 def discover_cursor_cli_artifacts(
@@ -286,6 +346,12 @@ def discover_cursor_cli_artifacts(
         input_roots,
         direct_match=_is_cli_config,
         glob_pattern=CLI_CONFIG_GLOB,
+        expect_dir=False,
+    )
+    global_state_paths = _discover_paths(
+        input_roots,
+        direct_match=_is_cursor_global_state_db,
+        glob_pattern=GLOBAL_STATE_GLOB,
         expect_dir=False,
     )
     ide_state_paths = _discover_paths(
@@ -319,6 +385,7 @@ def discover_cursor_cli_artifacts(
         cursor_root_paths=cursor_root_paths,
         application_support_roots=application_support_roots,
         cli_config_paths=cli_config_paths,
+        global_state_paths=global_state_paths,
         ide_state_paths=ide_state_paths,
         mcp_config_paths=mcp_config_paths,
         bridge_metadata_paths=bridge_metadata_paths,
@@ -328,7 +395,10 @@ def discover_cursor_cli_artifacts(
         cli_config=_read_cli_config(cli_config_paths),
         recent_file_paths=_read_recent_file_paths(ide_state_paths),
         bridge_servers=_read_bridge_servers(bridge_metadata_paths),
-        workspace_evidence=_discover_workspace_prompt_evidence(workspace_state_paths),
+        workspace_sessions=_discover_workspace_sessions(
+            workspace_state_paths,
+            global_state_paths=global_state_paths,
+        ),
     )
 
 
@@ -342,21 +412,36 @@ def parse_cli_log(
     invocation = _read_cli_log_invocation(resolved_path)
 
     discovery = artifacts or discover_cursor_cli_artifacts((resolved_path.parent.parent.parent,))
-    workspace_evidence = _match_workspace_evidence(
+    transcript_session = _match_transcript_session(
         invocation.invoked_at,
-        discovery.workspace_evidence,
+        discovery.workspace_sessions,
     )
-    transcript_completeness = (
-        TranscriptCompleteness.PARTIAL
-        if workspace_evidence is not None
-        else TranscriptCompleteness.UNSUPPORTED
-    )
-    limitations = PARTIAL_LIMITATIONS if workspace_evidence is not None else UNSUPPORTED_LIMITATIONS
+    prompt_session = None
+    messages: tuple[NormalizedMessage, ...] = ()
+    transcript_completeness = TranscriptCompleteness.UNSUPPORTED
+    limitations = UNSUPPORTED_LIMITATIONS
+    cwd = None
+
+    if transcript_session is not None and transcript_session.transcript is not None:
+        messages = transcript_session.transcript.messages
+        transcript_completeness = transcript_session.transcript.completeness
+        limitations = transcript_session.transcript.limitations
+        cwd = transcript_session.workspace_folder
+    else:
+        prompt_session = _match_prompt_only_session(
+            invocation.invoked_at,
+            discovery.workspace_sessions,
+        )
+        if prompt_session is not None:
+            transcript_completeness = TranscriptCompleteness.PARTIAL
+            limitations = PARTIAL_LIMITATIONS
 
     session_metadata: dict[str, object] = {
         "invocation": invocation.to_dict(),
         "workspace_state_count": len(discovery.workspace_state_paths),
     }
+    if discovery.global_state_paths:
+        session_metadata["global_state_count"] = len(discovery.global_state_paths)
     if discovery.cli_config is not None:
         session_metadata["cli_config"] = discovery.cli_config
     if discovery.recent_file_paths:
@@ -367,17 +452,20 @@ def parse_cli_log(
         ]
     if discovery.mcp_config_paths:
         session_metadata["has_mcp_config"] = True
-    if workspace_evidence is not None:
-        session_metadata["workspace_prompt_evidence"] = {
-            "match_strategy": "time_proximity",
-            **workspace_evidence.to_dict(),
-        }
+    if transcript_session is not None and transcript_session.transcript is not None:
+        session_metadata["transcript_attribution"] = (
+            transcript_session.to_transcript_attribution_dict()
+        )
+    elif prompt_session is not None:
+        session_metadata["workspace_prompt_evidence"] = prompt_session.to_prompt_evidence_dict(
+            match_strategy="time_proximity_metadata_only"
+        )
 
     return NormalizedConversation(
         source=CURSOR_CLI_DESCRIPTOR.key,
         execution_context=CURSOR_CLI_DESCRIPTOR.execution_context,
         collected_at=collected_at or utc_timestamp(),
-        messages=(),
+        messages=messages,
         transcript_completeness=transcript_completeness,
         limitations=limitations,
         source_session_id=invocation.invocation_id,
@@ -387,6 +475,7 @@ def parse_cli_log(
             session_started_at=invocation.invoked_at,
             source="cli",
             originator="cursor_cli",
+            cwd=cwd,
             app_shell=discovery.build_app_shell(log_path=str(resolved_path)),
         ),
     )
@@ -434,10 +523,12 @@ def iter_workspace_state_paths(input_roots: Iterable[Path]) -> Iterable[Path]:
     yield from sorted(candidates)
 
 
-def _discover_workspace_prompt_evidence(
+def _discover_workspace_sessions(
     workspace_state_paths: tuple[str, ...],
-) -> tuple[CursorWorkspacePromptEvidence, ...]:
-    evidence_rows: list[CursorWorkspacePromptEvidence] = []
+    *,
+    global_state_paths: tuple[str, ...],
+) -> tuple[CursorCliWorkspaceSession, ...]:
+    sessions: list[CursorCliWorkspaceSession] = []
     for raw_path in workspace_state_paths:
         state_db_path = Path(raw_path)
         state_values = _read_state_values(
@@ -478,51 +569,90 @@ def _discover_workspace_prompt_evidence(
         if activity_at is None:
             activity_at = composer["last_updated_at"] or composer["created_at"]
 
-        evidence_rows.append(
-            CursorWorkspacePromptEvidence(
+        transcript = _read_cursor_disk_kv_transcript(
+            composer_id=composer["composer_id"],
+            global_state_paths=global_state_paths,
+            generation_timestamps=generation_timestamps,
+        )
+        prompt_overlap_count = _prompt_overlap_count(
+            prompt_texts,
+            transcript.messages if transcript is not None else (),
+        )
+
+        sessions.append(
+            CursorCliWorkspaceSession(
                 workspace_id=state_db_path.parent.name,
                 composer_id=composer["composer_id"],
                 prompt_count=len(prompt_texts),
                 generation_count=len(generation_timestamps),
                 partial_prompt_texts=prompt_texts,
-                source_artifact_path=str(state_db_path.resolve(strict=False)),
+                workspace_state_path=str(state_db_path.resolve(strict=False)),
                 activity_at=activity_at,
                 workspace_folder=_read_workspace_folder(state_db_path.parent / "workspace.json"),
                 composer_name=composer["composer_name"],
                 composer_subtitle=composer["composer_subtitle"],
                 created_at=composer["created_at"],
                 last_updated_at=composer["last_updated_at"],
+                selected=bool(composer["selected"]),
+                last_focused=bool(composer["last_focused"]),
+                prompt_overlap_count=prompt_overlap_count,
+                transcript=transcript,
             )
         )
 
-    evidence_rows.sort(
-        key=lambda row: (
-            row.activity_at or "",
-            row.workspace_id,
-            row.composer_id,
-        )
-    )
-    return tuple(evidence_rows)
+    sessions.sort(key=lambda row: (row.activity_at or "", row.workspace_id, row.composer_id))
+    return tuple(sessions)
 
 
-def _match_workspace_evidence(
+def _match_transcript_session(
     invoked_at: str | None,
-    workspace_evidence: tuple[CursorWorkspacePromptEvidence, ...],
-) -> CursorWorkspacePromptEvidence | None:
+    workspace_sessions: tuple[CursorCliWorkspaceSession, ...],
+) -> CursorCliWorkspaceSession | None:
     invoked_at_dt = _parse_iso_timestamp(invoked_at)
     if invoked_at_dt is None:
         return None
 
-    candidates: list[tuple[float, CursorWorkspacePromptEvidence]] = []
-    for evidence in workspace_evidence:
-        activity_at_dt = _parse_iso_timestamp(evidence.activity_at)
+    candidates: list[tuple[tuple[int, float, float], CursorCliWorkspaceSession]] = []
+    for session in workspace_sessions:
+        transcript = session.transcript
+        if transcript is None or not transcript.messages:
+            continue
+        if not _has_confirmed_prompt_overlap(session):
+            continue
+        score = _transcript_match_score(invoked_at_dt, session)
+        if score is None:
+            continue
+        candidates.append((score, session))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: (item[0], item[1].workspace_id, item[1].composer_id))
+    if len(candidates) > 1 and candidates[0][0] == candidates[1][0]:
+        return None
+    return candidates[0][1]
+
+
+def _match_prompt_only_session(
+    invoked_at: str | None,
+    workspace_sessions: tuple[CursorCliWorkspaceSession, ...],
+) -> CursorCliWorkspaceSession | None:
+    invoked_at_dt = _parse_iso_timestamp(invoked_at)
+    if invoked_at_dt is None:
+        return None
+
+    candidates: list[tuple[float, CursorCliWorkspaceSession]] = []
+    for session in workspace_sessions:
+        if not session.partial_prompt_texts:
+            continue
+        activity_at_dt = _parse_iso_timestamp(session.activity_at)
         if activity_at_dt is None:
             continue
 
         delta_seconds = abs((activity_at_dt - invoked_at_dt).total_seconds())
-        if delta_seconds > EVIDENCE_MATCH_WINDOW_SECONDS:
+        if delta_seconds > PROMPT_EVIDENCE_MATCH_WINDOW_SECONDS:
             continue
-        candidates.append((delta_seconds, evidence))
+        candidates.append((delta_seconds, session))
 
     if not candidates:
         return None
@@ -654,14 +784,31 @@ def _read_state_values(
     state_db_path: Path,
     keys: tuple[str, ...],
 ) -> dict[str, object]:
-    if not state_db_path.is_file():
+    return _read_table_values(state_db_path, table_name="ItemTable", keys=keys)
+
+
+def _read_cursor_disk_kv_values(
+    state_db_path: Path,
+    keys: tuple[str, ...],
+) -> dict[str, object]:
+    return _read_table_values(state_db_path, table_name="cursorDiskKV", keys=keys)
+
+
+def _read_table_values(
+    state_db_path: Path,
+    *,
+    table_name: str,
+    keys: tuple[str, ...],
+) -> dict[str, object]:
+    if not state_db_path.is_file() or not keys:
         return {}
 
     try:
         with sqlite3.connect(str(state_db_path)) as connection:
             rows = connection.execute(
-                "SELECT key, value FROM ItemTable WHERE key IN ({})".format(
-                    ",".join("?" for _ in keys)
+                "SELECT key, value FROM {table} WHERE key IN ({placeholders})".format(
+                    table=table_name,
+                    placeholders=",".join("?" for _ in keys),
                 ),
                 keys,
             ).fetchall()
@@ -670,23 +817,39 @@ def _read_state_values(
 
     payload: dict[str, object] = {}
     for key, raw_value in rows:
-        if not isinstance(key, str) or not isinstance(raw_value, str):
+        if not isinstance(key, str):
             continue
-        try:
-            payload[key] = json.loads(raw_value)
-        except json.JSONDecodeError:
-            payload[key] = raw_value
+        payload[key] = _parse_json_sql_value(raw_value)
     return payload
+
+
+def _parse_json_sql_value(raw_value: object) -> object:
+    if isinstance(raw_value, memoryview):
+        raw_value = raw_value.tobytes()
+    if isinstance(raw_value, bytes):
+        try:
+            raw_text = raw_value.decode("utf-8")
+        except UnicodeDecodeError:
+            return raw_value
+    elif isinstance(raw_value, str):
+        raw_text = raw_value
+    else:
+        return raw_value
+
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError:
+        return raw_text
 
 
 def _select_composer_summary(
     composer_payload: dict[str, object],
-) -> dict[str, str | None] | None:
+) -> dict[str, str | bool | None] | None:
     raw_composers = composer_payload.get("allComposers")
     if not isinstance(raw_composers, list):
         return None
 
-    composers: dict[str, dict[str, str | None]] = {}
+    composers: dict[str, dict[str, str | bool | None]] = {}
     for raw_composer in raw_composers:
         if not isinstance(raw_composer, dict):
             continue
@@ -699,6 +862,8 @@ def _select_composer_summary(
             "composer_subtitle": _string_value(raw_composer.get("subtitle")),
             "created_at": _normalize_timestamp(raw_composer.get("createdAt")),
             "last_updated_at": _normalize_timestamp(raw_composer.get("lastUpdatedAt")),
+            "selected": False,
+            "last_focused": False,
         }
 
     if not composers:
@@ -706,6 +871,14 @@ def _select_composer_summary(
 
     selected_ids = _string_list(composer_payload.get("selectedComposerIds"))
     last_focused_ids = _string_list(composer_payload.get("lastFocusedComposerIds"))
+    for composer_id in selected_ids:
+        composer = composers.get(composer_id)
+        if composer is not None:
+            composer["selected"] = True
+    for composer_id in last_focused_ids:
+        composer = composers.get(composer_id)
+        if composer is not None:
+            composer["last_focused"] = True
     for composer_id in (*last_focused_ids, *selected_ids):
         composer = composers.get(composer_id)
         if composer is not None:
@@ -714,6 +887,205 @@ def _select_composer_summary(
     if len(composers) != 1:
         return None
     return next(iter(composers.values()))
+
+
+def _read_cursor_disk_kv_transcript(
+    *,
+    composer_id: str,
+    global_state_paths: tuple[str, ...],
+    generation_timestamps: list[str | None],
+) -> CursorCliTranscriptRecovery | None:
+    if not global_state_paths:
+        return None
+
+    composer_key = _composer_data_key(composer_id)
+    for raw_global_state_path in global_state_paths:
+        global_state_path = Path(raw_global_state_path)
+        composer_payload = _read_cursor_disk_kv_values(
+            global_state_path,
+            (composer_key,),
+        ).get(composer_key)
+        if not isinstance(composer_payload, dict):
+            continue
+
+        transcript = _build_cursor_disk_kv_transcript(
+            composer_id=composer_id,
+            composer_payload=composer_payload,
+            global_state_path=global_state_path,
+            generation_timestamps=generation_timestamps,
+        )
+        if transcript is not None:
+            return transcript
+
+    return None
+
+
+def _build_cursor_disk_kv_transcript(
+    *,
+    composer_id: str,
+    composer_payload: dict[str, object],
+    global_state_path: Path,
+    generation_timestamps: list[str | None],
+) -> CursorCliTranscriptRecovery | None:
+    headers = composer_payload.get("fullConversationHeadersOnly")
+    if not isinstance(headers, list):
+        return None
+
+    ordered_bubbles: list[tuple[str, MessageRole]] = []
+    for header in headers:
+        if not isinstance(header, dict):
+            continue
+        bubble_id = _string_value(header.get("bubbleId"))
+        bubble_type = _int_value(header.get("type"))
+        if bubble_id is None or bubble_type not in (1, 2):
+            continue
+        ordered_bubbles.append(
+            (
+                bubble_id,
+                MessageRole.USER if bubble_type == 1 else MessageRole.ASSISTANT,
+            )
+        )
+
+    if not ordered_bubbles:
+        return None
+
+    bubble_values = _read_cursor_disk_kv_values(
+        global_state_path,
+        tuple(
+            _bubble_data_key(composer_id, bubble_id)
+            for bubble_id, _ in ordered_bubbles
+        ),
+    )
+
+    messages: list[NormalizedMessage] = []
+    assistant_message_count = 0
+    missing_assistant_count = 0
+    missing_user_count = 0
+    skipped_tool_bubble_count = 0
+
+    for bubble_id, role in ordered_bubbles:
+        bubble_payload = bubble_values.get(_bubble_data_key(composer_id, bubble_id))
+        if not isinstance(bubble_payload, dict):
+            if role == MessageRole.ASSISTANT:
+                missing_assistant_count += 1
+            else:
+                missing_user_count += 1
+            continue
+
+        text = _clean_prompt_text(bubble_payload.get("text"))
+        if text is None:
+            if role == MessageRole.ASSISTANT and _is_tool_only_bubble(bubble_payload):
+                skipped_tool_bubble_count += 1
+                continue
+            if role == MessageRole.ASSISTANT:
+                missing_assistant_count += 1
+            else:
+                missing_user_count += 1
+            continue
+
+        timestamp = None
+        if role == MessageRole.ASSISTANT:
+            if assistant_message_count < len(generation_timestamps):
+                timestamp = generation_timestamps[assistant_message_count]
+            assistant_message_count += 1
+
+        messages.append(
+            NormalizedMessage(
+                role=role,
+                text=text,
+                timestamp=timestamp,
+            )
+        )
+
+    limitations: list[str] = []
+    if missing_user_count:
+        limitations.append(MISSING_USER_LIMITATION)
+    if missing_assistant_count:
+        limitations.append(MISSING_ASSISTANT_LIMITATION)
+
+    completeness = (
+        TranscriptCompleteness.COMPLETE
+        if assistant_message_count > 0 and not limitations
+        else TranscriptCompleteness.PARTIAL
+    )
+    return CursorCliTranscriptRecovery(
+        messages=tuple(messages),
+        completeness=completeness,
+        limitations=tuple(limitations),
+        source_name="cursor_disk_kv",
+        source_path=str(global_state_path),
+        header_count=len(ordered_bubbles),
+        assistant_message_count=assistant_message_count,
+        skipped_tool_bubble_count=skipped_tool_bubble_count,
+    )
+
+
+def _prompt_overlap_count(
+    prompt_texts: tuple[str, ...],
+    messages: tuple[NormalizedMessage, ...],
+) -> int:
+    user_texts = {
+        message.text.strip()
+        for message in messages
+        if message.role == MessageRole.USER and message.text.strip()
+    }
+    return sum(1 for prompt_text in prompt_texts if prompt_text in user_texts)
+
+
+def _has_confirmed_prompt_overlap(session: CursorCliWorkspaceSession) -> bool:
+    return session.prompt_count > 0 and session.prompt_overlap_count == session.prompt_count
+
+
+def _transcript_match_score(
+    invoked_at_dt: datetime,
+    session: CursorCliWorkspaceSession,
+) -> tuple[int, float, float] | None:
+    start_dt = _parse_iso_timestamp(session.created_at)
+    end_dt = _parse_iso_timestamp(session.activity_at) or _parse_iso_timestamp(
+        session.last_updated_at
+    )
+    if start_dt is None and end_dt is None:
+        return None
+
+    if start_dt is None:
+        start_dt = end_dt
+    if end_dt is None:
+        end_dt = start_dt
+    if start_dt is None or end_dt is None:
+        return None
+    if end_dt < start_dt:
+        end_dt = start_dt
+
+    padded_start = start_dt.timestamp() - TRANSCRIPT_ATTRIBUTION_PADDING_SECONDS
+    padded_end = end_dt.timestamp() + TRANSCRIPT_ATTRIBUTION_PADDING_SECONDS
+    invoked_ts = invoked_at_dt.timestamp()
+    if invoked_ts < padded_start or invoked_ts > padded_end:
+        return None
+
+    contains_invocation = 0 if start_dt <= invoked_at_dt <= end_dt else 1
+    anchor_dt = _parse_iso_timestamp(session.activity_at) or end_dt
+    return (
+        contains_invocation,
+        abs((invoked_at_dt - start_dt).total_seconds()),
+        abs((anchor_dt - invoked_at_dt).total_seconds()),
+    )
+
+
+def _composer_data_key(composer_id: str) -> str:
+    return f"composerData:{composer_id}"
+
+
+def _bubble_data_key(composer_id: str, bubble_id: str) -> str:
+    return f"bubbleId:{composer_id}:{bubble_id}"
+
+
+def _is_tool_only_bubble(bubble_payload: dict[str, object]) -> bool:
+    tool_former_data = bubble_payload.get("toolFormerData")
+    if isinstance(tool_former_data, dict):
+        return bool(tool_former_data)
+    if isinstance(tool_former_data, list):
+        return bool(tool_former_data)
+    return False
 
 
 def _generation_timestamps(generations_payload: object) -> list[str | None]:
@@ -873,6 +1245,14 @@ def _bool_value(value: object) -> bool | None:
     return None
 
 
+def _int_value(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    return None
+
+
 def _is_cursor_root(path: Path) -> bool:
     return path.name == ".cursor"
 
@@ -883,6 +1263,14 @@ def _is_cursor_application_support_root(path: Path) -> bool:
 
 def _is_cli_config(path: Path) -> bool:
     return path.name == "cli-config.json"
+
+
+def _is_cursor_global_state_db(path: Path) -> bool:
+    return (
+        path.name == "state.vscdb"
+        and path.parent.parent.name == "globalStorage"
+        and "Cursor" in path.parts
+    )
 
 
 def _is_cli_log(path: Path) -> bool:

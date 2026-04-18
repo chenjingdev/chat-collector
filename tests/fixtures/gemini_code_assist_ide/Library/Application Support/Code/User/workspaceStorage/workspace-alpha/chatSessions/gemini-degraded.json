@@ -1,0 +1,32 @@
+{
+  "sessionId": "gemini-degraded",
+  "responderUsername": "Gemini Code Assist",
+  "selectedModel": {
+    "metadata": {
+      "extension": {
+        "value": "google.geminicodeassist"
+      }
+    }
+  },
+  "requests": [
+    {
+      "requestId": "request-1",
+      "timestamp": "2026-03-14T12:00:00Z",
+      "message": {
+        "parts": [
+          {
+            "text": "Explain why provider ownership must be explicit."
+          }
+        ]
+      },
+      "response": {
+        "citations": [
+          {
+            "uri": "https://example.invalid/provider-attribution"
+          }
+        ]
+      }
+    }
+  ],
+  "isEmpty": false
+}

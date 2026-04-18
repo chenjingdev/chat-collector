@@ -4,21 +4,32 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from itertools import chain
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import unquote, urlparse
 
+from ..incremental import write_incremental_collection
 from ..models import (
     AppShellProvenance,
     CollectionPlan,
     CollectionResult,
     ConversationProvenance,
     NormalizedConversation,
+    NormalizedMessage,
+    MessageRole,
     SourceDescriptor,
+    SourceSupportMetadata,
     SupportLevel,
     TranscriptCompleteness,
 )
-from .codex_rollout import resolve_input_roots, timestamp_slug, utc_timestamp
+from ..source_roots import (
+    darwin_root,
+    default_descriptor_input_roots,
+    linux_root,
+    windows_root,
+)
+from .codex_rollout import resolve_input_roots, utc_timestamp
 
 GEMINI_CODE_ASSIST_IDE_DESCRIPTOR = SourceDescriptor(
     key="gemini_code_assist_ide",
@@ -31,10 +42,35 @@ GEMINI_CODE_ASSIST_IDE_DESCRIPTOR = SourceDescriptor(
         "~/Library/Application Support/Code/User/globalStorage",
         "~/Library/Application Support/Code/User/workspaceStorage",
     ),
+    artifact_root_candidates=(
+        darwin_root("$HOME/Library/Application Support/google-vscode-extension"),
+        linux_root("$XDG_CONFIG_HOME/google-vscode-extension"),
+        windows_root("$APPDATA/google-vscode-extension"),
+        darwin_root("$HOME/Library/Application Support/cloud-code"),
+        linux_root("$XDG_CONFIG_HOME/cloud-code"),
+        windows_root("$APPDATA/cloud-code"),
+        darwin_root("$HOME/Library/Application Support/Code/User/globalStorage"),
+        linux_root("$XDG_CONFIG_HOME/Code/User/globalStorage"),
+        windows_root("$APPDATA/Code/User/globalStorage"),
+        darwin_root("$HOME/Library/Application Support/Code/User/workspaceStorage"),
+        linux_root("$XDG_CONFIG_HOME/Code/User/workspaceStorage"),
+        windows_root("$APPDATA/Code/User/workspaceStorage"),
+    ),
     notes=(
-        "Collects Gemini Code Assist IDE state as metadata-only evidence from VS Code storage.",
+        "Reconstructs transcript messages from Gemini-owned VS Code chatSessions payloads when provider attribution is explicit and the body shape is recoverable.",
         "Treats google-vscode-extension auth files and cloud-code install residue as provenance only.",
-        "Checks chatSessions provider attribution and rejects non-Gemini transcript candidates.",
+        "Falls back to metadata-only IDE residue rows when Gemini transcript bodies cannot be confirmed from chatSessions payloads.",
+        "Checks chatSessions provider attribution and emits explicit rejection diagnostics for non-Gemini transcript candidates.",
+    ),
+    support_metadata=SourceSupportMetadata(
+        product_label="Gemini Code Assist",
+        host_surface="IDE extension",
+        expected_transcript_completeness=TranscriptCompleteness.PARTIAL,
+        limitation_summary="Gemini-owned chatSessions with recoverable body shapes are promoted, but foreign providers and Gemini-owned body-missing sessions still degrade to explicit metadata-only residue, so the source stays partial and opt-in.",
+        limitations=(
+            "Only explicitly Gemini-owned chatSessions with recoverable request or response bodies are promoted to transcript rows.",
+            "Foreign or unknown provider chatSessions, and Gemini-owned sessions without a confirmed body, remain metadata-only residue with explicit diagnostics.",
+        ),
     ),
 )
 
@@ -55,11 +91,21 @@ WORKSPACE_STATE_KEYS = (
     "memento/webviewView.cloudcode.gemini.chatView",
     "workbench.view.extension.geminiChat.numberOfVisibleViews",
 )
-UNSUPPORTED_LIMITATIONS = (
-    "no_confirmed_gemini_code_assist_ide_transcript_store",
-    "metadata_only_ide_state",
-    "chat_session_provider_attribution_required",
+NO_CONFIRMED_TRANSCRIPT_LIMITATION = "no_confirmed_gemini_code_assist_ide_transcript_store"
+METADATA_ONLY_IDE_STATE_LIMITATION = "metadata_only_ide_state"
+CHAT_SESSION_PROVIDER_ATTRIBUTION_REQUIRED_LIMITATION = (
+    "chat_session_provider_attribution_required"
 )
+FOREIGN_PROVIDER_REJECTED_LIMITATION = "foreign_chat_session_rejected"
+UNKNOWN_PROVIDER_REJECTED_LIMITATION = "unknown_chat_session_rejected"
+GEMINI_BODY_MISSING_LIMITATION = "gemini_owned_chat_session_body_missing"
+UNSUPPORTED_LIMITATIONS = (
+    NO_CONFIRMED_TRANSCRIPT_LIMITATION,
+    METADATA_ONLY_IDE_STATE_LIMITATION,
+    CHAT_SESSION_PROVIDER_ATTRIBUTION_REQUIRED_LIMITATION,
+)
+GLOBAL_RESIDUE_CONVERSATION_ORIGIN = "global_state_residue"
+WORKSPACE_RESIDUE_CONVERSATION_ORIGIN = "workspace_chat_session_residue"
 GEMINI_PROVIDER_MARKERS = (
     "gemini",
     "google.geminicodeassist",
@@ -71,6 +117,59 @@ FOREIGN_PROVIDER_MARKERS = (
     "cursor",
     "openai.chatgpt",
 )
+REQUEST_BODY_FIELDS = ("message", "text", "prompt", "query", "content", "parts")
+REQUEST_NESTED_TEXT_KEYS = frozenset(
+    {"message", "prompt", "query", "content", "parts", "segments", "blocks", "fragments"}
+)
+REQUEST_TIMESTAMP_PATHS = (
+    ("timestamp",),
+    ("requestTimestamp",),
+    ("createdAt",),
+    ("requestDate",),
+    ("lastUpdatedAt",),
+)
+RESPONSE_BODY_FIELDS = (
+    "response",
+    "responseMessage",
+    "responseText",
+    "responseParts",
+    "reply",
+    "answer",
+)
+RESPONSE_NESTED_TEXT_KEYS = frozenset(
+    {
+        "message",
+        "content",
+        "parts",
+        "response",
+        "responseMessage",
+        "responseText",
+        "responseParts",
+        "reply",
+        "answer",
+        "candidate",
+        "candidates",
+        "segments",
+        "blocks",
+        "fragments",
+    }
+)
+RESPONSE_TIMESTAMP_PATHS = (
+    ("response", "timestamp"),
+    ("response", "createdAt"),
+    ("response", "updatedAt"),
+    ("responseTimestamp",),
+    ("responseDate",),
+    ("lastResponseDate",),
+)
+SESSION_STARTED_AT_PATHS = (
+    ("createdAt",),
+    ("creationDate",),
+    ("timestamp",),
+    ("lastMessageDate",),
+)
+MISSING_USER_MESSAGE_LIMITATION = "user_message_missing_from_gemini_chat_session"
+MISSING_ASSISTANT_MESSAGE_LIMITATION = "assistant_message_missing_from_gemini_chat_session"
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +180,8 @@ class GeminiChatSessionAttribution:
     source_path: str | None = None
     request_count: int | None = None
     is_empty: bool | None = None
+    provider_candidates: tuple[str, ...] = ()
+    ownership_reason: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -95,6 +196,10 @@ class GeminiChatSessionAttribution:
             payload["request_count"] = self.request_count
         if self.is_empty is not None:
             payload["is_empty"] = self.is_empty
+        if self.provider_candidates:
+            payload["provider_candidates"] = list(self.provider_candidates)
+        if self.ownership_reason is not None:
+            payload["ownership_reason"] = self.ownership_reason
         return payload
 
 
@@ -114,6 +219,16 @@ class GeminiIdeArtifacts:
         if not provenance.to_dict():
             return None
         return provenance
+
+
+@dataclass(frozen=True, slots=True)
+class GeminiChatSessionTranscript:
+    messages: tuple[NormalizedMessage, ...]
+    completeness: TranscriptCompleteness
+    limitations: tuple[str, ...] = ()
+    session_started_at: str | None = None
+    user_message_count: int = 0
+    assistant_message_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,51 +253,38 @@ class GeminiCodeAssistIdeCollector:
         resolved_input_roots = resolve_input_roots(input_roots or self._default_input_roots())
         artifacts = discover_gemini_code_assist_ide_artifacts(resolved_input_roots)
         collected_at = utc_timestamp()
-        output_dir = archive_root / self.descriptor.key
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"memory_chat_v1-{timestamp_slug(collected_at)}.jsonl"
-
-        conversation_count = 0
-        with output_path.open("w", encoding="utf-8") as handle:
-            for global_state_path in artifacts.global_state_paths:
-                conversation = parse_global_state(
+        scanned_artifact_count = len(artifacts.global_state_paths) + len(
+            artifacts.workspace_state_paths
+        )
+        conversations = chain(
+            (
+                parse_global_state(
                     Path(global_state_path),
                     collected_at=collected_at,
                     artifacts=artifacts,
                 )
-                if conversation is None:
-                    continue
-                handle.write(json.dumps(conversation.to_dict(), ensure_ascii=False))
-                handle.write("\n")
-                conversation_count += 1
-
-            for workspace_state_path in artifacts.workspace_state_paths:
-                conversation = parse_workspace_state(
+                for global_state_path in artifacts.global_state_paths
+            ),
+            chain.from_iterable(
+                parse_workspace_state_rows(
                     Path(workspace_state_path),
                     collected_at=collected_at,
                     artifacts=artifacts,
                 )
-                if conversation is None:
-                    continue
-                handle.write(json.dumps(conversation.to_dict(), ensure_ascii=False))
-                handle.write("\n")
-                conversation_count += 1
-
-        scanned_artifact_count = len(artifacts.global_state_paths) + len(
-            artifacts.workspace_state_paths
+                for workspace_state_path in artifacts.workspace_state_paths
+            ),
         )
-        return CollectionResult(
+        return write_incremental_collection(
             source=self.descriptor.key,
             archive_root=archive_root,
-            output_path=output_path,
             input_roots=resolved_input_roots,
             scanned_artifact_count=scanned_artifact_count,
-            conversation_count=conversation_count,
-            message_count=0,
+            collected_at=collected_at,
+            conversations=conversations,
         )
 
     def _default_input_roots(self) -> tuple[Path, ...]:
-        return tuple(Path(root) for root in self.descriptor.default_input_roots)
+        return default_descriptor_input_roots(self.descriptor)
 
 
 def discover_gemini_code_assist_ide_artifacts(
@@ -260,6 +362,7 @@ def parse_global_state(
         provenance=ConversationProvenance(
             source="vscode",
             originator="google.geminicodeassist",
+            conversation_origin=GLOBAL_RESIDUE_CONVERSATION_ORIGIN,
             app_shell=(
                 artifacts.build_app_shell(state_db_path=str(resolved_path))
                 if artifacts is not None
@@ -275,6 +378,22 @@ def parse_workspace_state(
     collected_at: str | None = None,
     artifacts: GeminiIdeArtifacts | None = None,
 ) -> NormalizedConversation | None:
+    rows = parse_workspace_state_rows(
+        state_db_path,
+        collected_at=collected_at,
+        artifacts=artifacts,
+    )
+    if not rows:
+        return None
+    return rows[0]
+
+
+def parse_workspace_state_rows(
+    state_db_path: Path,
+    *,
+    collected_at: str | None = None,
+    artifacts: GeminiIdeArtifacts | None = None,
+) -> tuple[NormalizedConversation, ...]:
     resolved_path = state_db_path.expanduser().resolve(strict=False)
     state_values = _read_state_values(resolved_path, WORKSPACE_STATE_KEYS)
     chat_view_state = _extract_view_state(
@@ -295,59 +414,113 @@ def parse_workspace_state(
         and not isinstance(memento_payload, dict)
         and visible_views is None
     ):
-        return None
+        return ()
 
     workspace_id = resolved_path.parent.name
     workspace_folder = _read_workspace_folder(resolved_path.parent / "workspace.json")
     attributions = _attribute_indexed_chat_sessions(resolved_path.parent, chat_session_index)
+    workspace_metadata = _build_workspace_state_metadata(
+        workspace_id=workspace_id,
+        workspace_folder=workspace_folder,
+        chat_view_state=chat_view_state,
+        outline_view_state=outline_view_state,
+        memento_payload=memento_payload,
+        visible_views=visible_views,
+        chat_session_index=chat_session_index,
+        attributions=attributions,
+        artifacts=artifacts,
+    )
+    workspace_rows = _build_workspace_chat_session_conversations(
+        workspace_dir=resolved_path.parent,
+        workspace_id=workspace_id,
+        workspace_folder=workspace_folder,
+        state_db_path=resolved_path,
+        chat_session_index=chat_session_index,
+        attributions=attributions,
+        workspace_metadata=workspace_metadata,
+        collected_at=collected_at,
+        artifacts=artifacts,
+    )
+    return workspace_rows
+
+
+def attribute_chat_session(chat_session_path: Path) -> GeminiChatSessionAttribution | None:
+    resolved_path = chat_session_path.expanduser().resolve(strict=False)
+    payload = _read_chat_session_payload(resolved_path)
+    if payload is None:
+        return None
+
+    return _attribute_chat_session_payload(resolved_path, payload)
+
+
+def parse_chat_session_transcript(
+    chat_session_path: Path,
+    *,
+    attribution: GeminiChatSessionAttribution | None = None,
+    collected_at: str | None = None,
+    workspace_id: str | None = None,
+    workspace_folder: str | None = None,
+    state_db_path: Path | None = None,
+    artifacts: GeminiIdeArtifacts | None = None,
+    workspace_metadata: dict[str, object] | None = None,
+) -> NormalizedConversation | None:
+    resolved_path = chat_session_path.expanduser().resolve(strict=False)
+    payload = _read_chat_session_payload(resolved_path)
+    if payload is None:
+        return None
+
+    resolved_attribution = attribution or _attribute_chat_session_payload(resolved_path, payload)
+    if resolved_attribution is None or resolved_attribution.ownership != "gemini":
+        return None
+
+    transcript = _recover_chat_session_transcript(payload)
+    if transcript is None or not transcript.messages:
+        return None
 
     return NormalizedConversation(
         source=GEMINI_CODE_ASSIST_IDE_DESCRIPTOR.key,
         execution_context=GEMINI_CODE_ASSIST_IDE_DESCRIPTOR.execution_context,
         collected_at=collected_at or utc_timestamp(),
-        messages=(),
-        transcript_completeness=TranscriptCompleteness.UNSUPPORTED,
-        limitations=UNSUPPORTED_LIMITATIONS,
-        source_session_id=f"vscode:{workspace_id}",
+        messages=transcript.messages,
+        transcript_completeness=transcript.completeness,
+        limitations=transcript.limitations,
+        source_session_id=_compose_chat_session_source_id(
+            workspace_id=workspace_id,
+            session_id=resolved_attribution.session_id,
+        ),
         source_artifact_path=str(resolved_path),
-        session_metadata=_build_workspace_state_metadata(
+        session_metadata=_build_chat_session_metadata(
+            attribution=resolved_attribution,
+            transcript=transcript,
             workspace_id=workspace_id,
             workspace_folder=workspace_folder,
-            chat_view_state=chat_view_state,
-            outline_view_state=outline_view_state,
-            memento_payload=memento_payload,
-            visible_views=visible_views,
-            chat_session_index=chat_session_index,
-            attributions=attributions,
+            workspace_metadata=workspace_metadata,
             artifacts=artifacts,
         ),
         provenance=ConversationProvenance(
+            session_started_at=transcript.session_started_at,
             source="vscode",
             originator="google.geminicodeassist",
             cwd=workspace_folder,
             app_shell=(
-                artifacts.build_app_shell(state_db_path=str(resolved_path))
-                if artifacts is not None
+                artifacts.build_app_shell(state_db_path=str(state_db_path))
+                if artifacts is not None and state_db_path is not None
                 else None
             ),
         ),
     )
 
 
-def attribute_chat_session(chat_session_path: Path) -> GeminiChatSessionAttribution | None:
-    resolved_path = chat_session_path.expanduser().resolve(strict=False)
-    try:
-        payload = json.loads(resolved_path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
-    if not isinstance(payload, dict):
-        return None
+def _attribute_chat_session_payload(
+    resolved_path: Path,
+    payload: dict[str, object],
+) -> GeminiChatSessionAttribution:
 
     session_id = _string_value(payload.get("sessionId")) or resolved_path.stem
     request_count = _list_length(payload.get("requests"))
     is_empty = _bool_value(payload.get("isEmpty"))
     provider_candidates = tuple(candidate for candidate in _provider_candidates(payload) if candidate)
-    ownership, provider = _classify_provider(provider_candidates)
+    ownership, provider, ownership_reason = _classify_provider(provider_candidates)
 
     return GeminiChatSessionAttribution(
         session_id=session_id,
@@ -356,7 +529,302 @@ def attribute_chat_session(chat_session_path: Path) -> GeminiChatSessionAttribut
         source_path=str(resolved_path),
         request_count=request_count,
         is_empty=is_empty,
+        provider_candidates=provider_candidates,
+        ownership_reason=ownership_reason,
     )
+
+
+def _build_workspace_chat_session_conversations(
+    *,
+    workspace_dir: Path,
+    workspace_id: str,
+    workspace_folder: str | None,
+    state_db_path: Path,
+    chat_session_index: object,
+    attributions: tuple[GeminiChatSessionAttribution, ...],
+    workspace_metadata: dict[str, object],
+    collected_at: str | None,
+    artifacts: GeminiIdeArtifacts | None,
+) -> tuple[NormalizedConversation, ...]:
+    indexed_session_ids = _indexed_session_ids(chat_session_index)
+    if not indexed_session_ids:
+        return ()
+
+    chat_sessions_dir = workspace_dir / "chatSessions"
+    if not chat_sessions_dir.is_dir():
+        return ()
+
+    session_paths = {
+        path.stem: path.resolve(strict=False)
+        for path in chat_sessions_dir.rglob("*.json")
+        if path.is_file()
+    }
+    attributions_by_id = {row.session_id: row for row in attributions}
+
+    conversations: list[NormalizedConversation] = []
+    residue_payloads: list[dict[str, object]] = []
+    for session_id in indexed_session_ids:
+        attribution = attributions_by_id.get(session_id)
+        if attribution is None:
+            continue
+        session_path = session_paths.get(session_id)
+        if session_path is None:
+            continue
+        if attribution.ownership != "gemini":
+            residue_payload = _build_chat_session_residue_payload(attribution=attribution)
+            if residue_payload is not None:
+                residue_payloads.append(residue_payload)
+            continue
+
+        conversation = parse_chat_session_transcript(
+            session_path,
+            attribution=attribution,
+            collected_at=collected_at,
+            workspace_id=workspace_id,
+            workspace_folder=workspace_folder,
+            state_db_path=state_db_path,
+            artifacts=artifacts,
+            workspace_metadata=workspace_metadata,
+        )
+        if conversation is not None:
+            conversations.append(conversation)
+            continue
+        residue_payloads.append(
+            _build_chat_session_residue_payload(
+                attribution=attribution,
+                residue_kind="gemini_provider_explicit_but_body_missing",
+                limitations=(GEMINI_BODY_MISSING_LIMITATION,),
+            )
+        )
+    residue_conversation = _build_workspace_residue_conversation(
+        workspace_id=workspace_id,
+        workspace_folder=workspace_folder,
+        state_db_path=state_db_path,
+        workspace_metadata=workspace_metadata,
+        residue_payloads=tuple(residue_payloads),
+        transcript_rows=tuple(conversations),
+        collected_at=collected_at,
+        artifacts=artifacts,
+    )
+    if residue_conversation is not None:
+        conversations.append(residue_conversation)
+
+    return tuple(conversations)
+
+
+def _recover_chat_session_transcript(
+    payload: dict[str, object],
+) -> GeminiChatSessionTranscript | None:
+    raw_requests = payload.get("requests")
+    if not isinstance(raw_requests, list):
+        return None
+
+    messages: list[NormalizedMessage] = []
+    user_message_count = 0
+    assistant_message_count = 0
+    missing_user_count = 0
+    missing_assistant_count = 0
+
+    for index, raw_request in enumerate(raw_requests, start=1):
+        if not isinstance(raw_request, dict):
+            continue
+
+        request_id = _chat_session_request_id(raw_request, index=index)
+        user_text = _extract_text_from_named_fields(
+            raw_request,
+            REQUEST_BODY_FIELDS,
+            nested_keys=REQUEST_NESTED_TEXT_KEYS,
+        )
+        user_timestamp = _first_normalized_timestamp(raw_request, REQUEST_TIMESTAMP_PATHS)
+        if user_text is not None:
+            user_message_count += 1
+            messages.append(
+                NormalizedMessage(
+                    role=MessageRole.USER,
+                    text=user_text,
+                    timestamp=user_timestamp,
+                    source_message_id=request_id,
+                )
+            )
+        elif _has_named_field(raw_request, REQUEST_BODY_FIELDS):
+            missing_user_count += 1
+
+        assistant_text = _extract_text_from_named_fields(
+            raw_request,
+            RESPONSE_BODY_FIELDS,
+            nested_keys=RESPONSE_NESTED_TEXT_KEYS,
+        )
+        assistant_timestamp = _first_normalized_timestamp(raw_request, RESPONSE_TIMESTAMP_PATHS)
+        if assistant_text is not None:
+            assistant_message_count += 1
+            messages.append(
+                NormalizedMessage(
+                    role=MessageRole.ASSISTANT,
+                    text=assistant_text,
+                    timestamp=assistant_timestamp,
+                    source_message_id=_chat_session_response_id(
+                        raw_request,
+                        request_id=request_id,
+                        index=index,
+                    ),
+                )
+            )
+        elif user_text is not None or _has_named_field(raw_request, RESPONSE_BODY_FIELDS):
+            missing_assistant_count += 1
+
+    if not messages:
+        return None
+
+    limitations: list[str] = []
+    if missing_user_count:
+        limitations.append(MISSING_USER_MESSAGE_LIMITATION)
+    if missing_assistant_count:
+        limitations.append(MISSING_ASSISTANT_MESSAGE_LIMITATION)
+
+    completeness = (
+        TranscriptCompleteness.COMPLETE
+        if assistant_message_count > 0 and not limitations
+        else TranscriptCompleteness.PARTIAL
+    )
+    session_started_at = next(
+        (message.timestamp for message in messages if message.timestamp is not None),
+        _first_normalized_timestamp(payload, SESSION_STARTED_AT_PATHS),
+    )
+    return GeminiChatSessionTranscript(
+        messages=tuple(messages),
+        completeness=completeness,
+        limitations=tuple(limitations),
+        session_started_at=session_started_at,
+        user_message_count=user_message_count,
+        assistant_message_count=assistant_message_count,
+    )
+
+
+def _build_chat_session_metadata(
+    *,
+    attribution: GeminiChatSessionAttribution,
+    transcript: GeminiChatSessionTranscript,
+    workspace_id: str | None,
+    workspace_folder: str | None,
+    workspace_metadata: dict[str, object] | None,
+    artifacts: GeminiIdeArtifacts | None,
+) -> dict[str, object]:
+    payload = dict(workspace_metadata) if workspace_metadata is not None else {}
+    payload["scope"] = "chat_session"
+    if workspace_id is not None:
+        payload["workspace_id"] = workspace_id
+    if workspace_folder is not None:
+        payload["workspace_folder"] = workspace_folder
+    payload["chat_session_id"] = attribution.session_id
+    payload["chat_session_ownership"] = attribution.ownership
+    if attribution.provider is not None:
+        payload["chat_session_provider"] = attribution.provider
+    if attribution.request_count is not None:
+        payload["chat_session_request_count"] = attribution.request_count
+    if attribution.is_empty is not None:
+        payload["chat_session_is_empty"] = attribution.is_empty
+    payload["user_message_count"] = transcript.user_message_count
+    payload["assistant_message_count"] = transcript.assistant_message_count
+    if artifacts is not None:
+        if artifacts.credential_artifact_count:
+            payload["credential_artifacts_present"] = True
+        if artifacts.install_artifact_count:
+            payload["install_artifacts_present"] = True
+    return payload
+
+
+def _build_chat_session_residue_payload(
+    *,
+    attribution: GeminiChatSessionAttribution,
+    residue_kind: str | None = None,
+    limitations: tuple[str, ...] = (),
+) -> dict[str, object] | None:
+    if residue_kind is None:
+        if attribution.ownership == "foreign":
+            residue_kind = "foreign_provider_rejected"
+            limitations = (FOREIGN_PROVIDER_REJECTED_LIMITATION,)
+        elif attribution.ownership == "unknown":
+            residue_kind = "unknown_provider_rejected"
+            limitations = (UNKNOWN_PROVIDER_REJECTED_LIMITATION,)
+        else:
+            return None
+
+    payload = attribution.to_dict()
+    payload["residue_kind"] = residue_kind
+    if limitations:
+        payload["limitations"] = list(limitations)
+    return payload
+
+
+def _build_workspace_residue_conversation(
+    *,
+    workspace_id: str,
+    workspace_folder: str | None,
+    state_db_path: Path,
+    workspace_metadata: dict[str, object],
+    residue_payloads: tuple[dict[str, object], ...],
+    transcript_rows: tuple[NormalizedConversation, ...],
+    collected_at: str | None,
+    artifacts: GeminiIdeArtifacts | None,
+) -> NormalizedConversation | None:
+    if not residue_payloads and transcript_rows:
+        return None
+
+    session_metadata = dict(workspace_metadata)
+    session_metadata["scope"] = "workspace_state_residue"
+    if transcript_rows:
+        session_metadata["transcript_chat_session_count"] = len(transcript_rows)
+    if residue_payloads:
+        session_metadata["metadata_only_chat_session_residue"] = list(residue_payloads)
+        session_metadata["metadata_only_chat_session_residue_count"] = len(residue_payloads)
+
+    return NormalizedConversation(
+        source=GEMINI_CODE_ASSIST_IDE_DESCRIPTOR.key,
+        execution_context=GEMINI_CODE_ASSIST_IDE_DESCRIPTOR.execution_context,
+        collected_at=collected_at or utc_timestamp(),
+        messages=(),
+        transcript_completeness=TranscriptCompleteness.UNSUPPORTED,
+        limitations=_workspace_residue_limitations(
+            residue_payloads=residue_payloads,
+            transcript_rows=transcript_rows,
+        ),
+        source_session_id=f"vscode:{workspace_id}:residue",
+        source_artifact_path=str(state_db_path),
+        session_metadata=session_metadata,
+        provenance=ConversationProvenance(
+            source="vscode",
+            originator="google.geminicodeassist",
+            cwd=workspace_folder,
+            conversation_origin=WORKSPACE_RESIDUE_CONVERSATION_ORIGIN,
+            app_shell=(
+                artifacts.build_app_shell(state_db_path=str(state_db_path))
+                if artifacts is not None
+                else None
+            ),
+        ),
+    )
+
+
+def _workspace_residue_limitations(
+    *,
+    residue_payloads: tuple[dict[str, object], ...],
+    transcript_rows: tuple[NormalizedConversation, ...],
+) -> tuple[str, ...]:
+    limitations: list[str] = []
+    if not transcript_rows:
+        limitations.append(NO_CONFIRMED_TRANSCRIPT_LIMITATION)
+    limitations.append(METADATA_ONLY_IDE_STATE_LIMITATION)
+
+    if not residue_payloads and not transcript_rows:
+        limitations.append(CHAT_SESSION_PROVIDER_ATTRIBUTION_REQUIRED_LIMITATION)
+
+    for payload in residue_payloads:
+        for limitation in payload.get("limitations", ()):
+            if not isinstance(limitation, str) or limitation in limitations:
+                continue
+            limitations.append(limitation)
+
+    return tuple(limitations)
 
 
 def _build_global_state_metadata(
@@ -559,28 +1027,41 @@ def _provider_candidates(payload: dict[str, object]) -> tuple[str, ...]:
         _string_value(payload.get("responderUsername")),
         _string_value(payload.get("provider")),
         _string_value(payload.get("providerId")),
+        _nested_string(payload, "responder", "provider"),
+        _nested_string(payload, "responder", "extensionId"),
         _nested_string(payload, "selectedModel", "metadata", "extension", "value"),
+        _nested_string(payload, "selectedModel", "metadata", "extension", "id"),
         _nested_string(payload, "selectedModel", "metadata", "extensionId"),
+        _nested_string(payload, "selectedModel", "metadata", "provider"),
         _nested_string(payload, "metadata", "extension", "value"),
+        _nested_string(payload, "metadata", "extension", "id"),
+        _nested_string(payload, "metadata", "extensionId"),
         _nested_string(payload, "metadata", "provider"),
     ]
-    return tuple(candidate for candidate in candidates if candidate is not None)
+    unique_candidates: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        if candidate is None or candidate in seen:
+            continue
+        seen.add(candidate)
+        unique_candidates.append(candidate)
+    return tuple(unique_candidates)
 
 
-def _classify_provider(provider_candidates: tuple[str, ...]) -> tuple[str, str | None]:
+def _classify_provider(provider_candidates: tuple[str, ...]) -> tuple[str, str | None, str]:
     for candidate in provider_candidates:
         lowered = candidate.casefold()
         if any(marker in lowered for marker in GEMINI_PROVIDER_MARKERS):
-            return "gemini", candidate
+            return "gemini", candidate, "explicit_gemini_provider_marker"
 
     for candidate in provider_candidates:
         lowered = candidate.casefold()
         if any(marker in lowered for marker in FOREIGN_PROVIDER_MARKERS):
-            return "foreign", candidate
+            return "foreign", candidate, "explicit_foreign_provider_marker"
 
     if provider_candidates:
-        return "unknown", provider_candidates[0]
-    return "unknown", None
+        return "unknown", provider_candidates[0], "provider_candidate_unrecognized"
+    return "unknown", None, "provider_candidate_missing"
 
 
 def _extract_view_state(payload: object, nested_key: str) -> dict[str, object] | None:
@@ -720,13 +1201,141 @@ def _read_workspace_folder(workspace_json_path: Path) -> str | None:
     return folder_uri
 
 
-def _nested_string(payload: object, *path: str) -> str | None:
+def _read_chat_session_payload(chat_session_path: Path) -> dict[str, object] | None:
+    try:
+        payload = json.loads(chat_session_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def _compose_chat_session_source_id(*, workspace_id: str | None, session_id: str) -> str:
+    if workspace_id is None:
+        return session_id
+    return f"vscode:{workspace_id}:{session_id}"
+
+
+def _chat_session_request_id(raw_request: dict[str, object], *, index: int) -> str:
+    return (
+        _string_value(raw_request.get("requestId"))
+        or _string_value(raw_request.get("id"))
+        or f"request-{index}"
+    )
+
+
+def _chat_session_response_id(
+    raw_request: dict[str, object],
+    *,
+    request_id: str,
+    index: int,
+) -> str:
+    response_payload = raw_request.get("response")
+    if isinstance(response_payload, dict):
+        response_id = (
+            _string_value(response_payload.get("responseId"))
+            or _string_value(response_payload.get("id"))
+        )
+        if response_id is not None:
+            return response_id
+
+    return (
+        _string_value(raw_request.get("responseId"))
+        or _string_value(raw_request.get("responseMessageId"))
+        or f"{request_id}:response-{index}"
+    )
+
+
+def _extract_text_from_named_fields(
+    payload: dict[str, object],
+    field_names: tuple[str, ...],
+    *,
+    nested_keys: frozenset[str],
+) -> str | None:
+    fragments: list[str] = []
+    for field_name in field_names:
+        if field_name not in payload:
+            continue
+        _append_text_fragments(payload.get(field_name), fragments, nested_keys=nested_keys)
+
+    if not fragments:
+        return None
+
+    unique_fragments: list[str] = []
+    seen: set[str] = set()
+    for fragment in fragments:
+        if fragment in seen:
+            continue
+        seen.add(fragment)
+        unique_fragments.append(fragment)
+
+    if not unique_fragments:
+        return None
+    return "\n\n".join(unique_fragments)
+
+
+def _append_text_fragments(
+    content: object,
+    fragments: list[str],
+    *,
+    nested_keys: frozenset[str],
+) -> None:
+    if isinstance(content, str):
+        stripped = content.strip()
+        if stripped:
+            fragments.append(stripped)
+        return
+
+    if isinstance(content, list):
+        for item in content:
+            _append_text_fragments(item, fragments, nested_keys=nested_keys)
+        return
+
+    if not isinstance(content, dict):
+        return
+
+    for key in ("text", "markdown"):
+        if key in content:
+            _append_text_fragments(content.get(key), fragments, nested_keys=nested_keys)
+
+    for key in nested_keys:
+        if key in content:
+            _append_text_fragments(content.get(key), fragments, nested_keys=nested_keys)
+
+
+def _has_named_field(payload: dict[str, object], field_names: tuple[str, ...]) -> bool:
+    for field_name in field_names:
+        value = payload.get(field_name)
+        if isinstance(value, str) and value.strip():
+            return True
+        if isinstance(value, (list, dict)) and value:
+            return True
+    return False
+
+
+def _first_normalized_timestamp(
+    payload: object,
+    paths: tuple[tuple[str, ...], ...],
+) -> str | None:
+    for path in paths:
+        timestamp = _normalize_timestamp(_nested_value(payload, *path))
+        if timestamp is not None:
+            return timestamp
+    return None
+
+
+def _nested_value(payload: object, *path: str) -> object:
     current = payload
     for key in path:
         if not isinstance(current, dict):
             return None
         current = current.get(key)
-    return _string_value(current)
+    return current
+
+
+def _nested_string(payload: object, *path: str) -> str | None:
+    return _string_value(_nested_value(payload, *path))
 
 
 def _normalize_timestamp(value: object) -> str | None:
@@ -808,6 +1417,8 @@ __all__ = [
     "GeminiChatSessionAttribution",
     "attribute_chat_session",
     "discover_gemini_code_assist_ide_artifacts",
+    "parse_chat_session_transcript",
     "parse_global_state",
     "parse_workspace_state",
+    "parse_workspace_state_rows",
 ]

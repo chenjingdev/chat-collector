@@ -4,13 +4,23 @@ import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from ..incremental import write_incremental_collection
 from ..models import (
     CollectionPlan,
     CollectionResult,
     IdeBridgeProvenance,
     NormalizedConversation,
     SourceDescriptor,
+    SourceSupportMetadata,
     SupportLevel,
+    TranscriptCompleteness,
+)
+from ..source_roots import (
+    all_platform_root,
+    darwin_root,
+    default_descriptor_input_roots,
+    linux_root,
+    windows_root,
 )
 from .claude_code_cli import (
     MAIN_TRANSCRIPT_ROW_TYPES,
@@ -21,7 +31,7 @@ from .claude_code_cli import (
     _string_value,
     iter_transcript_paths,
 )
-from .codex_rollout import resolve_input_roots, timestamp_slug, utc_timestamp
+from .codex_rollout import resolve_input_roots, utc_timestamp
 
 IDE_COMMAND_MARKER = "<command-name>/ide</command-name>"
 IDE_CONFIG_KEYS = frozenset(
@@ -50,10 +60,26 @@ CLAUDE_CODE_IDE_DESCRIPTOR = SourceDescriptor(
         "~/Library/Application Support/Code/User/globalStorage",
         "~/Library/Application Support/Cursor/User/globalStorage",
     ),
+    artifact_root_candidates=(
+        all_platform_root("$HOME/.claude"),
+        all_platform_root("$HOME/.claude.json"),
+        darwin_root("$HOME/Library/Application Support/Code/User/globalStorage"),
+        linux_root("$XDG_CONFIG_HOME/Code/User/globalStorage"),
+        windows_root("$APPDATA/Code/User/globalStorage"),
+        darwin_root("$HOME/Library/Application Support/Cursor/User/globalStorage"),
+        linux_root("$XDG_CONFIG_HOME/Cursor/User/globalStorage"),
+        windows_root("$APPDATA/Cursor/User/globalStorage"),
+    ),
     notes=(
         "Uses shared ~/.claude/projects/<encoded-project-path>/<session-uuid>.jsonl as the canonical transcript source.",
         "Selects only IDE-attached sessions using /ide history rows or explicit /ide bridge markers in the shared session JSONL.",
         "Treats ~/.claude/history.jsonl, ~/.claude.json, ~/.claude/keybindings.json, IDE recent-file residue, and Claude debug logs as provenance only.",
+    ),
+    support_metadata=SourceSupportMetadata(
+        product_label="Claude Code",
+        host_surface="IDE bridge",
+        expected_transcript_completeness=TranscriptCompleteness.COMPLETE,
+        limitation_summary="IDE bridge metadata stays provenance-only; the shared Claude session JSONL remains canonical.",
     ),
 )
 
@@ -105,38 +131,25 @@ class ClaudeCodeIdeCollector:
         transcript_paths = tuple(iter_transcript_paths(resolved_input_roots))
         discovery = discover_ide_bridge_provenance(resolved_input_roots)
         collected_at = utc_timestamp()
-        output_dir = archive_root / self.descriptor.key
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / f"memory_chat_v1-{timestamp_slug(collected_at)}.jsonl"
-
-        conversation_count = 0
-        message_count = 0
-        with output_path.open("w", encoding="utf-8") as handle:
-            for transcript_path in transcript_paths:
-                conversation = parse_transcript_file(
-                    transcript_path,
-                    collected_at=collected_at,
-                    discovery=discovery,
-                )
-                if conversation is None:
-                    continue
-                handle.write(json.dumps(conversation.to_dict(), ensure_ascii=False))
-                handle.write("\n")
-                conversation_count += 1
-                message_count += len(conversation.messages)
-
-        return CollectionResult(
+        conversations = (
+            parse_transcript_file(
+                transcript_path,
+                collected_at=collected_at,
+                discovery=discovery,
+            )
+            for transcript_path in transcript_paths
+        )
+        return write_incremental_collection(
             source=self.descriptor.key,
             archive_root=archive_root,
-            output_path=output_path,
             input_roots=resolved_input_roots,
             scanned_artifact_count=len(transcript_paths),
-            conversation_count=conversation_count,
-            message_count=message_count,
+            collected_at=collected_at,
+            conversations=conversations,
         )
 
     def _default_input_roots(self) -> tuple[Path, ...]:
-        return tuple(Path(root) for root in self.descriptor.default_input_roots)
+        return default_descriptor_input_roots(self.descriptor)
 
 
 def parse_transcript_file(

@@ -13,6 +13,7 @@ from ..models import (
     NormalizedMessage,
     SourceDescriptor,
 )
+from ..source_roots import resolve_explicit_input_roots
 
 ROLE_MAP = {
     "assistant": MessageRole.ASSISTANT,
@@ -117,7 +118,7 @@ def parse_codex_rollout_file(
     return NormalizedConversation(
         source=descriptor.key,
         execution_context=descriptor.execution_context,
-        collected_at=collected_at or _utc_timestamp(),
+        collected_at=collected_at or utc_timestamp(),
         messages=tuple(messages),
         source_session_id=session_metadata.session_id or resolved_path.stem,
         source_artifact_path=str(resolved_path),
@@ -143,7 +144,7 @@ def build_conversation_provenance(
 
 
 def resolve_input_roots(input_roots: Iterable[Path]) -> tuple[Path, ...]:
-    return tuple(root.expanduser().resolve(strict=False) for root in input_roots)
+    return resolve_explicit_input_roots(input_roots)
 
 
 def iter_rollout_paths(input_roots: Iterable[Path]) -> Iterable[Path]:

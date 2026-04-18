@@ -5,10 +5,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from llm_chat_archive.source_roots import normalize_source_root_platform
 from llm_chat_archive.sources.codex_cli import CodexCliCollector, parse_rollout_file
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "codex_cli"
+CURRENT_PLATFORM = normalize_source_root_platform().value
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
@@ -112,6 +114,12 @@ def test_cli_collect_codex_cli_plan_and_execute(tmp_path: Path) -> None:
     plan_payload = json.loads(plan_result.stdout)
     assert plan_payload["source"] == "codex_cli"
     assert plan_payload["implemented"] is True
+    assert plan_payload["root_resolution"]["platform"] == CURRENT_PLATFORM
+    assert plan_payload["root_resolution"]["resolution_source"] == "descriptor"
+    assert any(
+        root["path"].endswith("/.codex")
+        for root in plan_payload["root_resolution"]["roots"]
+    )
 
     execute_result = run_cli(
         "collect",
@@ -128,6 +136,18 @@ def test_cli_collect_codex_cli_plan_and_execute(tmp_path: Path) -> None:
     assert execute_payload["source"] == "codex_cli"
     assert execute_payload["scanned_artifact_count"] == 2
     assert execute_payload["conversation_count"] == 2
+    assert execute_payload["root_resolution"] == {
+        "platform": CURRENT_PLATFORM,
+        "resolution_source": "cli_input_root",
+        "resolved_roots": [str(FIXTURE_ROOT.resolve(strict=False))],
+        "roots": [
+            {
+                "declared_path": str(FIXTURE_ROOT.resolve(strict=False)),
+                "resolution_source": "cli_input_root",
+                "path": str(FIXTURE_ROOT.resolve(strict=False)),
+            }
+        ],
+    }
     output_path = Path(execute_payload["output_path"])
     rows = read_jsonl(output_path)
     assert len(rows) == 2

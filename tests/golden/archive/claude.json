@@ -1,0 +1,186 @@
+{
+  "case": "claude",
+  "descriptor": {
+    "display_name": "Claude Code CLI",
+    "execution_context": "cli",
+    "support_level": "complete",
+    "support_metadata": {
+      "expected_transcript_completeness": "complete",
+      "host_surface": "CLI",
+      "limitation_summary": "Subagent traces remain separate JSONL sessions instead of being merged into the parent.",
+      "product_label": "Claude Code"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Claude Code"
+  },
+  "fixture_subpath": "claude_code_cli",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 3,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 8,
+    "output_path": "<ARCHIVE_ROOT>/claude/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 3,
+    "skipped_conversation_count": 0,
+    "source": "claude",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 3
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "row-user-1",
+          "text": "Inspect the chat collector repository.",
+          "timestamp": "2026-03-14T10:00:02Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "asst-1",
+          "text": "I will inspect the collector entry points.",
+          "timestamp": "2026-03-14T10:00:03Z"
+        },
+        {
+          "images": [
+            {
+              "mime_type": "image/png",
+              "source": "file:///tmp/collector-failure.png"
+            }
+          ],
+          "role": "user",
+          "source_message_id": "user-2",
+          "text": "Here is the failing screenshot.",
+          "timestamp": "2026-03-14T10:00:04Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "row-assistant-2",
+          "text": "I found the Claude collector entry point.",
+          "timestamp": "2026-03-14T10:00:09Z"
+        }
+      ],
+      "provenance": {
+        "cwd": "<REPO_ROOT>",
+        "originator": "claude_code_cli",
+        "session_started_at": "2026-03-14T10:00:00Z",
+        "source": "cli"
+      },
+      "source": "claude",
+      "source_artifact_path": "<FIXTURE_ROOT>/projects/-Users-chenjing-dev-chat-collector/11111111-1111-4111-8111-111111111111.jsonl",
+      "source_session_id": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "sub-user-1",
+          "text": "Check the parser edge cases.",
+          "timestamp": "2026-03-14T10:01:01Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "sub-asst-1",
+          "text": "The parser should keep text and images only.",
+          "timestamp": "2026-03-14T10:01:02Z"
+        }
+      ],
+      "provenance": {
+        "cwd": "<REPO_ROOT>",
+        "originator": "agent-reviewer",
+        "session_started_at": "2026-03-14T10:01:00Z",
+        "source": "cli"
+      },
+      "source": "claude",
+      "source_artifact_path": "<FIXTURE_ROOT>/projects/-Users-chenjing-dev-chat-collector/11111111-1111-4111-8111-111111111111/subagents/reviewer.jsonl",
+      "source_session_id": "11111111-1111-4111-8111-111111111111/subagents/reviewer"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "user-3",
+          "text": "Summarize the last Claude CLI run.",
+          "timestamp": "2026-03-14T12:00:01Z"
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "asst-3",
+          "text": "The run completed successfully.\n\nOnly human-facing content was retained.",
+          "timestamp": "2026-03-14T12:00:02Z"
+        }
+      ],
+      "provenance": {
+        "cwd": "/Users/chenjing/dev/other-repo",
+        "originator": "claude_code_cli",
+        "session_started_at": "2026-03-14T12:00:00Z",
+        "source": "cli"
+      },
+      "source": "claude",
+      "source_artifact_path": "<FIXTURE_ROOT>/projects/-Users-chenjing-dev-other-repo/22222222-2222-4222-8222-222222222222.jsonl",
+      "source_session_id": "22222222-2222-4222-8222-222222222222"
+    }
+  ],
+  "source": "claude"
+}

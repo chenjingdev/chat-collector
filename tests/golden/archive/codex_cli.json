@@ -1,0 +1,133 @@
+{
+  "case": "codex_cli",
+  "descriptor": {
+    "display_name": "Codex CLI",
+    "execution_context": "cli",
+    "support_level": "complete",
+    "support_metadata": {
+      "expected_transcript_completeness": "complete",
+      "host_surface": "CLI",
+      "limitation_summary": "Filters event, reasoning, tool, and search noise out of the transcript.",
+      "product_label": "Codex"
+    }
+  },
+  "fixture_metadata": {
+    "app": "Codex CLI",
+    "version_markers": [
+      "0.31.1",
+      "0.32.0"
+    ]
+  },
+  "fixture_subpath": "codex_cli",
+  "result": {
+    "archive_root": "<ARCHIVE_ROOT>",
+    "conversation_count": 2,
+    "input_roots": [
+      "<FIXTURE_ROOT>"
+    ],
+    "message_count": 5,
+    "output_path": "<ARCHIVE_ROOT>/codex_cli/memory_chat_v1-<COLLECTED_AT>.jsonl",
+    "redaction_event_count": 0,
+    "scanned_artifact_count": 2,
+    "skipped_conversation_count": 0,
+    "source": "codex_cli",
+    "upgraded_conversation_count": 0,
+    "written_conversation_count": 2
+  },
+  "rows": [
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "messages": [
+        {
+          "role": "user",
+          "source_message_id": "arch-user",
+          "text": "Summarize the last change."
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "arch-assistant",
+          "text": "The last change added the collector.\n\nIt also added tests."
+        }
+      ],
+      "provenance": {
+        "archived": true,
+        "cli_version": "0.31.1",
+        "cwd": "/Users/chenjing/dev/another-repo",
+        "originator": "codex_cli_rs",
+        "session_started_at": "2026-03-01T10:15:00Z",
+        "source": "cli"
+      },
+      "source": "codex_cli",
+      "source_artifact_path": "<FIXTURE_ROOT>/archived_sessions/rollout-20260301T101500-session-archived.jsonl",
+      "source_session_id": "session-archived"
+    },
+    {
+      "collected_at": "<COLLECTED_AT>",
+      "contract": {
+        "allowed_roles": [
+          "system",
+          "developer",
+          "user",
+          "assistant"
+        ],
+        "archive_kind": "memory_chat_v1",
+        "excluded_artifacts": [
+          "tool_calls",
+          "mcp_invocation_noise",
+          "internal_reasoning",
+          "execution_artifacts"
+        ],
+        "focus": "memory_usefulness",
+        "schema_version": "2026-03-19"
+      },
+      "execution_context": "cli",
+      "messages": [
+        {
+          "role": "developer",
+          "source_message_id": "msg-dev",
+          "text": "Follow the repository guardrails."
+        },
+        {
+          "role": "user",
+          "source_message_id": "msg-user",
+          "text": "Implement the codex collector."
+        },
+        {
+          "role": "assistant",
+          "source_message_id": "msg-assistant",
+          "text": "I will inspect the repo and add the collector."
+        }
+      ],
+      "provenance": {
+        "archived": false,
+        "cli_version": "0.32.0",
+        "cwd": "<REPO_ROOT>",
+        "originator": "codex_cli_rs",
+        "session_started_at": "2026-03-14T09:00:00Z",
+        "source": "cli"
+      },
+      "source": "codex_cli",
+      "source_artifact_path": "<FIXTURE_ROOT>/sessions/2026/03/14/rollout-20260314T090000-session-active.jsonl",
+      "source_session_id": "session-active"
+    }
+  ],
+  "source": "codex_cli"
+}

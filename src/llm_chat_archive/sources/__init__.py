@@ -3,7 +3,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..models import CollectionPlan, SourceDescriptor, SupportLevel
+from ..models import (
+    CollectionPlan,
+    SourceDescriptor,
+    SourceSupportMetadata,
+    SupportLevel,
+    TranscriptCompleteness,
+)
+from ..source_roots import (
+    all_platform_root,
+    darwin_root,
+    linux_root,
+    windows_root,
+)
 from ..registry import Collector, CollectorRegistry
 from .antigravity_editor_view import (
     ANTIGRAVITY_EDITOR_VIEW_DESCRIPTOR,
@@ -24,6 +36,7 @@ from .gemini_code_assist_ide import (
     GEMINI_CODE_ASSIST_IDE_DESCRIPTOR,
     GeminiCodeAssistIdeCollector,
 )
+from .windsurf_editor import WINDSURF_EDITOR_DESCRIPTOR, WindsurfEditorCollector
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,9 +65,21 @@ BUILTIN_SOURCE_DESCRIPTORS = (
             "~/.cursor",
             "~/Library/Application Support/Cursor/User",
         ),
+        artifact_root_candidates=(
+            all_platform_root("$HOME/.cursor"),
+            darwin_root("$HOME/Library/Application Support/Cursor/User"),
+            linux_root("$XDG_CONFIG_HOME/Cursor/User"),
+            windows_root("$APPDATA/Cursor/User"),
+        ),
         notes=(
             "Current local evidence is metadata-first, not a clean transcript store.",
             "Collector implementation should start from workspace storage metadata, not logs.",
+        ),
+        support_metadata=SourceSupportMetadata(
+            product_label="Cursor",
+            host_surface="CLI",
+            expected_transcript_completeness=TranscriptCompleteness.UNSUPPORTED,
+            limitation_summary="Scaffold-only placeholder; no confirmed Cursor CLI transcript path is implemented here.",
         ),
     ),
 )
@@ -75,6 +100,7 @@ def register_builtin_collectors(registry: CollectorRegistry) -> CollectorRegistr
     registry.register(
         GeminiCodeAssistIdeCollector(descriptor=GEMINI_CODE_ASSIST_IDE_DESCRIPTOR)
     )
+    registry.register(WindsurfEditorCollector(descriptor=WINDSURF_EDITOR_DESCRIPTOR))
     for descriptor in BUILTIN_SOURCE_DESCRIPTORS:
         if descriptor.key == CURSOR_CLI_DESCRIPTOR.key:
             continue
@@ -98,6 +124,7 @@ __all__ = [
     "CURSOR_EDITOR_DESCRIPTOR",
     "GEMINI_CLI_DESCRIPTOR",
     "GEMINI_CODE_ASSIST_IDE_DESCRIPTOR",
+    "WINDSURF_EDITOR_DESCRIPTOR",
     "AntigravityEditorViewCollector",
     "ClaudeCodeCliCollector",
     "ClaudeCodeIdeCollector",
@@ -109,6 +136,7 @@ __all__ = [
     "GeminiCliCollector",
     "GeminiCodeAssistIdeCollector",
     "ScaffoldCollector",
+    "WindsurfEditorCollector",
     "build_registry",
     "register_builtin_collectors",
 ]
